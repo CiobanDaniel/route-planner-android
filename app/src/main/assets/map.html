@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+    <style>
+        html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #d9e2ec; }
+        .leaflet-container { background: #d9e2ec; }
+        .leaflet-tile-container img { image-rendering: -webkit-optimize-contrast; }
+        .leaflet-control-attribution { font-size: 10px; opacity: 0.75; }
+        .stop-marker {
+            background: #E86A17;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+        }
+        .user-marker-wrap { background: transparent; border: none; }
+        .user-dot {
+            width: 16px;
+            height: 16px;
+            margin-left: 6px;
+            margin-top: 6px;
+            border-radius: 50%;
+            background: #1A73E8;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 8px rgba(26,115,232,0.22), 0 1px 4px rgba(0,0,0,0.35);
+        }
+        .user-chevron {
+            width: 0;
+            height: 0;
+            margin-left: 6px;
+            margin-top: 2px;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 22px solid #1A73E8;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    // Canvas vectors stay locked to tiles during pinch/pan better than SVG with leaflet-rotate.
+    var vectorRenderer = L.canvas({ padding: 0.5 });
+
+    var map = L.map('map', {
+        zoomControl: false,
+        attributionControl: true,
+        preferCanvas: true,
+        renderer: vectorRenderer,
+        // Animated zoom + rotate often desyncs overlays mid-gesture.
+        zoomAnimation: false,
+        markerZoomAnimation: false,
+        fadeAnimation: false,
+        rotate: true,
+        bearing: 0,
+        touchRotate: true,
+        rotateControl: false
+    }).setView([45.7489, 21.2257], 12);
+
+    var baseLayers = {
+        map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20,
+            maxNativeZoom: 20,
+            detectRetina: true,
+            updateWhenZooming: false,
+            keepBuffer: 2
+        }),
+        driving: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19,
+            maxNativeZoom: 19,
+            detectRetina: true,
+            updateWhenZooming: false,
+            keepBuffer: 2
+        }),
+        satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19,
+            maxNativeZoom: 19,
+            detectRetina: true,
+            updateWhenZooming: false,
+            keepBuffer: 2
+        }),
+        terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap, SRTM | OpenTopoMap',
+            subdomains: 'abc',
+            maxZoom: 17,
+            maxNativeZoom: 17,
+            detectRetina: true,
+            updateWhenZooming: false,
+            keepBuffer: 2
+        })
+    };
+
+    var currentBase = baseLayers.map;
+    currentBase.addTo(map);
+
+    var markersLayer = L.layerGroup().addTo(map);
+    var lineLayer = L.layerGroup().addTo(map);
+    var navLayer = L.layerGroup().addTo(map);
+    var userMarker = null;
+    var hasCenteredOnUser = false;
+    var longPressTimer = null;
+    var longPressStart = null;
+    var driveFollow = false;
+    var followPaused = false;
+    var lastBearing = 0;
+    var lastUserLatLng = null;
+    var navCoords = null;
+    var navHalo = null;
+    var navLine = null;
+    var gestureDepth = 0;
+    var resumeFollowTimer = null;
+
+    function notifyFollowPaused(paused) {
+        if (window.AndroidBridge && AndroidBridge.onFollowPaused) {
+            try { AndroidBridge.onFollowPaused(!!paused); } catch (e) {}
+        }
+    }
+
+    function beginGesture() {
+        gestureDepth++;
+        if (resumeFollowTimer) {
+            clearTimeout(resumeFollowTimer);
+            resumeFollowTimer = null;
+        }
+        if (driveFollow && !followPaused) {
+            followPaused = true;
+            notifyFollowPaused(true);
+        }
+        clearLongPress();
+    }
+
+    function endGesture() {
+        gestureDepth = Math.max(0, gestureDepth - 1);
+        if (gestureDepth === 0) {
+            // Keep follow paused until user taps Recenter — avoids fighting the map.
+            redrawVectors();
+        }
+    }
+
+    function redrawVectors() {
+        if (navHalo && navHalo._renderer) navHalo.redraw();
+        if (navLine && navLine._renderer) navLine.redraw();
+        lineLayer.eachLayer(function (layer) {
+            if (layer.redraw) layer.redraw();
+        });
+    }
+
+    map.on('dragstart', beginGesture);
+    map.on('zoomstart', beginGesture);
+    map.on('rotatestart', beginGesture);
+    map.on('dragend', endGesture);
+    map.on('zoomend', function () {
+        endGesture();
+        redrawVectors();
+    });
+    map.on('rotateend', function () {
+        endGesture();
+        redrawVectors();
+    });
+    map.on('moveend', redrawVectors);
+    map.on('rotate', redrawVectors);
+
+    map.getContainer().addEventListener('touchstart', function (e) {
+        if (e.touches.length >= 2) beginGesture();
+    }, { passive: true });
+
+    function pointAhead(latlng, bearingDeg, distanceMeters) {
+        var R = 6378137;
+        var br = (bearingDeg || 0) * Math.PI / 180;
+        var lat1 = latlng.lat * Math.PI / 180;
+        var lon1 = latlng.lng * Math.PI / 180;
+        var ang = distanceMeters / R;
+        var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ang) + Math.cos(lat1) * Math.sin(ang) * Math.cos(br));
+        var lon2 = lon1 + Math.atan2(
+            Math.sin(br) * Math.sin(ang) * Math.cos(lat1),
+            Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2)
+        );
+        return L.latLng(lat2 * 180 / Math.PI, lon2 * 180 / Math.PI);
+    }
+
+    function setMapStyle(styleId) {
+        var next = baseLayers[styleId] || baseLayers.map;
+        if (next === currentBase) return;
+        map.removeLayer(currentBase);
+        currentBase = next;
+        currentBase.addTo(map);
+        markersLayer.bringToFront();
+        lineLayer.bringToFront();
+        navLayer.bringToFront();
+        if (userMarker) userMarker.setZIndexOffset(1000);
+    }
+
+    function setDriveFollow(enabled) {
+        var was = driveFollow;
+        driveFollow = !!enabled;
+        if (driveFollow && !was) {
+            followPaused = false;
+            notifyFollowPaused(false);
+            if (userMarker) {
+                map.setView(userMarker.getLatLng(), Math.max(map.getZoom(), 17), { animate: false });
+            }
+            updateUserMarkerVisual();
+            if (lastBearing) map.setBearing(lastBearing);
+        }
+        if (!driveFollow && was) {
+            followPaused = false;
+            notifyFollowPaused(false);
+            map.setBearing(0);
+            updateUserMarkerVisual();
+        }
+    }
+
+    function resumeDriveFollow() {
+        followPaused = false;
+        gestureDepth = 0;
+        notifyFollowPaused(false);
+        if (driveFollow && lastUserLatLng) {
+            if (lastBearing) map.setBearing(lastBearing);
+            var ahead = pointAhead(lastUserLatLng, lastBearing, 55);
+            map.setView(ahead, Math.max(map.getZoom(), 17), { animate: false });
+        }
+    }
+
+    function updateUserMarkerVisual() {
+        if (!userMarker) return;
+        var el = userMarker.getElement();
+        if (!el) return;
+        var tip = el.querySelector('.user-dot, .user-chevron');
+        if (!tip) return;
+        if (driveFollow) {
+            tip.className = 'user-chevron';
+            tip.style.transform = '';
+        } else {
+            tip.className = 'user-dot';
+            tip.style.transform = 'rotate(' + lastBearing + 'deg)';
+        }
+    }
+
+    function clearLongPress() {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        longPressStart = null;
+    }
+
+    function startLongPress(latlng) {
+        clearLongPress();
+        longPressStart = latlng;
+        longPressTimer = setTimeout(function () {
+            if (longPressStart && window.AndroidBridge) {
+                AndroidBridge.onMapLongClick(longPressStart.lat, longPressStart.lng);
+            }
+            clearLongPress();
+        }, 550);
+    }
+
+    map.on('mousedown', function (e) {
+        if (e.originalEvent && e.originalEvent.button === 0) {
+            startLongPress(e.latlng);
+        }
+    });
+    map.on('mouseup', clearLongPress);
+    map.on('mousemove', function (e) {
+        if (longPressStart && e.latlng.distanceTo(longPressStart) > 25) {
+            clearLongPress();
+        }
+    });
+    map.on('contextmenu', function (e) {
+        if (window.AndroidBridge) {
+            AndroidBridge.onMapLongClick(e.latlng.lat, e.latlng.lng);
+        }
+    });
+
+    map.getContainer().addEventListener('touchstart', function (e) {
+        if (e.touches.length === 1) {
+            var touch = e.touches[0];
+            var rect = map.getContainer().getBoundingClientRect();
+            var point = L.point(touch.clientX - rect.left, touch.clientY - rect.top);
+            startLongPress(map.containerPointToLatLng(point));
+        } else {
+            clearLongPress();
+        }
+    }, { passive: true });
+    map.getContainer().addEventListener('touchend', clearLongPress, { passive: true });
+    map.getContainer().addEventListener('touchmove', clearLongPress, { passive: true });
+    map.getContainer().addEventListener('touchcancel', clearLongPress, { passive: true });
+
+    function setUserLocation(lat, lng, fly, bearing) {
+        var latlng = L.latLng(lat, lng);
+        lastUserLatLng = latlng;
+        if (typeof bearing === 'number' && !isNaN(bearing) && bearing >= 0) {
+            lastBearing = bearing;
+        }
+
+        if (!userMarker) {
+            var icon = L.divIcon({
+                className: 'user-marker-wrap',
+                html: '<div class="' + (driveFollow ? 'user-chevron' : 'user-dot') + '"></div>',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+            userMarker = L.marker(latlng, { icon: icon, zIndexOffset: 1000, rotationAngle: 0 }).addTo(map);
+        } else {
+            userMarker.setLatLng(latlng);
+        }
+        updateUserMarkerVisual();
+        trimNavRouteToUser(latlng);
+
+        if (fly) {
+            followPaused = false;
+            notifyFollowPaused(false);
+            var targetZoom = driveFollow ? Math.max(map.getZoom(), 17) : Math.max(map.getZoom(), 15);
+            map.setView(latlng, targetZoom, { animate: false });
+            hasCenteredOnUser = true;
+            if (driveFollow && lastBearing) {
+                map.setBearing(lastBearing);
+            }
+        } else if (driveFollow && !followPaused && gestureDepth === 0) {
+            if (lastBearing) map.setBearing(lastBearing);
+            var ahead = pointAhead(latlng, lastBearing, 55);
+            map.panTo(ahead, { animate: true, duration: 0.25, easeLinearity: 0.4 });
+            hasCenteredOnUser = true;
+        } else if (!hasCenteredOnUser) {
+            map.setView(latlng, 15, { animate: false });
+            hasCenteredOnUser = true;
+        }
+    }
+
+    function polylineOpts(color, weight, opacity) {
+        return {
+            color: color,
+            weight: weight,
+            opacity: opacity,
+            renderer: vectorRenderer,
+            lineCap: 'round',
+            lineJoin: 'round',
+            interactive: false
+        };
+    }
+
+    function setNavRoute(lineJson, fit) {
+        navLayer.clearLayers();
+        navHalo = null;
+        navLine = null;
+        navCoords = null;
+        if (!lineJson) return;
+        var line = typeof lineJson === 'string' ? JSON.parse(lineJson) : lineJson;
+        if (!line.features || line.features.length === 0) return;
+        var coords = line.features[0].geometry.coordinates.map(function (c) {
+            return [c[1], c[0]];
+        });
+        if (coords.length < 2) return;
+        navCoords = coords;
+        navHalo = L.polyline(coords, polylineOpts('#FFFFFF', 12, 0.92)).addTo(navLayer);
+        navLine = L.polyline(coords, polylineOpts('#E86A17', 7, 1)).addTo(navLayer);
+        navLayer.bringToFront();
+        if (fit && !driveFollow) {
+            map.fitBounds(coords, { padding: [80, 80], maxZoom: 16, animate: false });
+        }
+    }
+
+    function trimNavRouteToUser(latlng) {
+        if (!navCoords || !navLine || navCoords.length < 2) return;
+        var best = 0;
+        var bestDist = Infinity;
+        var bestPoint = navCoords[0];
+        for (var i = 0; i < navCoords.length - 1; i++) {
+            var a = L.latLng(navCoords[i][0], navCoords[i][1]);
+            var b = L.latLng(navCoords[i + 1][0], navCoords[i + 1][1]);
+            var projected = projectOnSegment(latlng, a, b);
+            var d = latlng.distanceTo(projected);
+            if (d < bestDist) {
+                bestDist = d;
+                best = i;
+                bestPoint = [projected.lat, projected.lng];
+            }
+        }
+        // Only trim when reasonably near the route.
+        if (bestDist > 80) return;
+        var trimmed = [bestPoint].concat(navCoords.slice(best + 1));
+        if (trimmed.length < 2) return;
+        navHalo.setLatLngs(trimmed);
+        navLine.setLatLngs(trimmed);
+    }
+
+    function projectOnSegment(p, a, b) {
+        var ax = a.lng, ay = a.lat, bx = b.lng, by = b.lat;
+        var dx = bx - ax, dy = by - ay;
+        if (dx === 0 && dy === 0) return a;
+        var t = ((p.lng - ax) * dx + (p.lat - ay) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t));
+        return L.latLng(ay + t * dy, ax + t * dx);
+    }
+
+    function clearNavRoute() {
+        navLayer.clearLayers();
+        navHalo = null;
+        navLine = null;
+        navCoords = null;
+    }
+
+    function setRoute(pointsJson, lineJson, fit) {
+        markersLayer.clearLayers();
+        lineLayer.clearLayers();
+
+        var points = JSON.parse(pointsJson);
+        var line = JSON.parse(lineJson);
+        var bounds = [];
+
+        if (line.features && line.features.length > 0) {
+            var coords = line.features[0].geometry.coordinates.map(function (c) {
+                return [c[1], c[0]];
+            });
+            if (coords.length >= 2) {
+                L.polyline(coords, polylineOpts('#ffffff', 8, 0.95)).addTo(lineLayer);
+                L.polyline(coords, polylineOpts('#C45A12', 4, 1)).addTo(lineLayer);
+                coords.forEach(function (c) { bounds.push(c); });
+            }
+        }
+
+        (points.features || []).forEach(function (feature) {
+            var lat = feature.geometry.coordinates[1];
+            var lon = feature.geometry.coordinates[0];
+            var id = feature.properties.id;
+            var name = feature.properties.name || '';
+            bounds.push([lat, lon]);
+
+            var icon = L.divIcon({
+                className: '',
+                html: '<div class="stop-marker"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            var marker = L.marker([lat, lon], { icon: icon });
+            marker.bindTooltip(name, { direction: 'top', offset: [0, -10] });
+            marker.on('click', function () {
+                if (window.AndroidBridge) AndroidBridge.onStopClick(id);
+            });
+            marker.addTo(markersLayer);
+        });
+
+        if (fit && !driveFollow && bounds.length > 0) {
+            if (bounds.length === 1) {
+                map.setView(bounds[0], 14, { animate: false });
+            } else {
+                map.fitBounds(bounds, { padding: [72, 72], maxZoom: 15, animate: false });
+            }
+        }
+    }
+
+    window.setRoute = setRoute;
+    window.setNavRoute = setNavRoute;
+    window.clearNavRoute = clearNavRoute;
+    window.setUserLocation = setUserLocation;
+    window.setMapStyle = setMapStyle;
+    window.setDriveFollow = setDriveFollow;
+    window.resumeDriveFollow = resumeDriveFollow;
+</script>
+</body>
+</html>

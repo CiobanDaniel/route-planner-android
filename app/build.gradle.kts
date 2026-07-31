@@ -60,6 +60,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    implementation(libs.accompanist.permissions)
+    implementation(libs.play.services.location)
+    implementation(libs.okhttp)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.appcompat)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Planificator rute</string>
+    <string name="action_back">Înapoi</string>
+    <string name="action_save">Salvează</string>
+    <string name="action_close">Închide</string>
+    <string name="action_cancel">Anulează</string>
+    <string name="action_add">Adaugă</string>
+    <string name="action_navigate">Navighează</string>
+    <string name="coming_soon">În curând</string>
+
+    <string name="menu_title">Meniu</string>
+    <string name="menu_settings">Setări</string>
+    <string name="menu_account">Cont</string>
+    <string name="menu_profile">Profil</string>
+    <string name="menu_login">Autentificare</string>
+    <string name="menu_logout">Deconectare</string>
+    <string name="menu_open">Deschide meniul</string>
+
+    <string name="settings_title">Setări</string>
+    <string name="settings_appearance">Aspect</string>
+    <string name="settings_language">Limbă</string>
+    <string name="settings_units">Unități de distanță</string>
+    <string name="settings_navigation">Navigație</string>
+    <string name="settings_keep_screen_on">Păstrează ecranul aprins</string>
+    <string name="settings_keep_screen_on_hint">Previne stingerea ecranului în timpul livrării</string>
+    <string name="settings_footer_hint">Opțiunile de cont și sincronizare vor apărea aici mai târziu.</string>
+
+    <string name="theme_system">Implicit sistem</string>
+    <string name="theme_light">Deschis</string>
+    <string name="theme_dark">Întunecat</string>
+    <string name="language_english">Engleză</string>
+    <string name="language_romanian">Română</string>
+    <string name="units_metric">Metric (km, m)</string>
+    <string name="units_imperial">Imperial (mi, ft)</string>
+
+    <string name="home_centered">Centrat pe locația ta</string>
+    <string name="home_getting_gps">Se obține GPS…</string>
+    <string name="home_allow_location">Permite locația pentru a centra harta</string>
+    <string name="home_empty_title">Nicio rută încă</string>
+    <string name="home_empty_body">Atinge + pentru a începe. După ce creezi o rută, ține apăsat pe hartă pentru a adăuga opriri.</string>
+    <string name="home_routes">Rute</string>
+
+    <string name="dialog_add_stop_title">Adaugă oprire aici</string>
+    <string name="dialog_stop_name">Nume oprire</string>
+    <string name="dialog_delivery_notes">Note livrare</string>
+    <string name="dialog_delivery_notes_hint">Cod poartă, telefon, lasă la ușă…</string>
+    <string name="dialog_stop_details">Detalii oprire</string>
+    <string name="dialog_name">Nume</string>
+    <string name="dialog_maps">Hărți</string>
+</resources>
