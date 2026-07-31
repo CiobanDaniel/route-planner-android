@@ -25,9 +25,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.data.routing.NavigationProgress
 import com.danielcioban.routeplanner.data.settings.DistanceUnit
@@ -52,6 +54,7 @@ fun DeliveryHud(
 ) {
     val next = progress.nextStop
     val completed = (totalStops - progress.remaining).coerceAtLeast(0)
+    val approximate = navigation.route?.isApproximate == true
 
     FloatingIsland(
         modifier = modifier.fillMaxWidth(),
@@ -65,12 +68,12 @@ fun DeliveryHud(
             ) {
                 Text(
                     text = when {
-                        next == null -> "Route finished"
+                        next == null -> stringResource(R.string.nav_route_finished)
                         navigation.phase == NavigationPhase.Navigating ||
                             navigation.phase == NavigationPhase.LoadingRoute ||
                             navigation.phase == NavigationPhase.Arrived ->
-                            "Navigating · ${completed + 1} of $totalStops"
-                        else -> "Next stop · ${completed + 1} of $totalStops"
+                            stringResource(R.string.nav_navigating_progress, completed + 1, totalStops)
+                        else -> stringResource(R.string.nav_next_stop_progress, completed + 1, totalStops)
                     },
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
@@ -78,7 +81,11 @@ fun DeliveryHud(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = if (progress.remaining == 0) "Done" else "${progress.remaining} left",
+                    text = if (progress.remaining == 0) {
+                        stringResource(R.string.nav_done)
+                    } else {
+                        stringResource(R.string.nav_left, progress.remaining)
+                    },
                     style = MaterialTheme.typography.labelLarge,
                     color = IslandColors.onSurfaceMuted,
                 )
@@ -87,13 +94,13 @@ fun DeliveryHud(
             when {
                 next == null -> {
                     Text(
-                        text = "All stops completed",
+                        text = stringResource(R.string.nav_all_completed),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = IslandColors.onSurface,
                     )
                     Text(
-                        text = "End delivery when you’re ready.",
+                        text = stringResource(R.string.nav_end_when_ready),
                         style = MaterialTheme.typography.bodyMedium,
                         color = IslandColors.onSurfaceMuted,
                     )
@@ -104,7 +111,7 @@ fun DeliveryHud(
                     ) {
                         Icon(Icons.Default.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("End delivery")
+                        Text(stringResource(R.string.nav_end_delivery))
                     }
                 }
 
@@ -116,7 +123,7 @@ fun DeliveryHud(
                         CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
                         Column {
                             Text(
-                                text = "Calculating road route…",
+                                text = stringResource(R.string.nav_calculating),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = IslandColors.onSurface,
@@ -138,7 +145,7 @@ fun DeliveryHud(
                         color = IslandColors.onSurface,
                     )
                     Text(
-                        text = navigation.errorMessage ?: "Couldn’t calculate a route",
+                        text = stringResource(navigation.errorMessageRes ?: R.string.nav_error_generic),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -149,7 +156,7 @@ fun DeliveryHud(
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Retry route")
+                        Text(stringResource(R.string.nav_retry_route))
                     }
                     ExternalMapsRow(onClick = { onOpenExternalMaps(next) })
                     ActionRow(onMarkDone = onMarkDone, onEndDelivery = onEndDelivery)
@@ -157,7 +164,7 @@ fun DeliveryHud(
 
                 navigation.phase == NavigationPhase.Arrived && progress.remaining == 0 -> {
                     Text(
-                        text = "You’ve finished the route",
+                        text = stringResource(R.string.nav_finished_route),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = IslandColors.onSurface,
@@ -169,13 +176,13 @@ fun DeliveryHud(
                     ) {
                         Icon(Icons.Default.Stop, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("End delivery")
+                        Text(stringResource(R.string.nav_end_delivery))
                     }
                 }
 
                 navigation.phase == NavigationPhase.Arrived -> {
                     Text(
-                        text = "You’ve arrived",
+                        text = stringResource(R.string.nav_arrived),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.SemiBold,
@@ -197,17 +204,25 @@ fun DeliveryHud(
                     ) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Mark done · next stop")
+                        Text(stringResource(R.string.nav_mark_done_next))
                     }
                     ExternalMapsRow(onClick = { onOpenExternalMaps(next) })
                     TextButton(onClick = onEndDelivery, modifier = Modifier.align(Alignment.End)) {
-                        Text("End delivery")
+                        Text(stringResource(R.string.nav_end_delivery))
                     }
                 }
 
                 navigation.phase == NavigationPhase.Navigating && navigation.guidance != null -> {
                     val guidance = navigation.guidance
                     val step = guidance.currentStep
+                    if (approximate) {
+                        Text(
+                            text = stringResource(R.string.nav_approx_banner),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                     Text(
                         text = GeoUtils.formatDistance(guidance.distanceToManeuverMeters, distanceUnit),
                         style = MaterialTheme.typography.displaySmall,
@@ -215,21 +230,27 @@ fun DeliveryHud(
                         color = IslandColors.onSurface,
                     )
                     Text(
-                        text = step?.instruction ?: "Continue to ${next.name}",
+                        text = when {
+                            approximate -> stringResource(R.string.nav_approx_head, next.name)
+                            step != null -> step.instruction
+                            else -> stringResource(R.string.nav_continue_to, next.name)
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = IslandColors.onSurface,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    guidance.thenStep?.let { then ->
-                        Text(
-                            text = "Then: ${then.instruction}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = IslandColors.onSurfaceMuted,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                    if (!approximate) {
+                        guidance.thenStep?.let { then ->
+                            Text(
+                                text = stringResource(R.string.nav_then, then.instruction),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = IslandColors.onSurfaceMuted,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                     Text(
                         text = buildString {
@@ -254,7 +275,6 @@ fun DeliveryHud(
                 }
 
                 else -> {
-                    // Delivery active but in-app nav not started / idle
                     Text(
                         text = next.name,
                         style = MaterialTheme.typography.headlineSmall,
@@ -263,10 +283,10 @@ fun DeliveryHud(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val meta = buildList {
-                        distanceFromYou?.let { add(it) }
-                        progress.approxFromPrevious?.let { add("prev $it") }
-                    }.joinToString(" · ")
+                    val prevLabel = progress.approxFromPrevious?.let {
+                        stringResource(R.string.nav_prev_approx, it)
+                    }
+                    val meta = listOfNotNull(distanceFromYou, prevLabel).joinToString(" · ")
                     if (meta.isNotBlank()) {
                         Text(
                             text = meta,
@@ -288,7 +308,13 @@ fun DeliveryHud(
                     ) {
                         Icon(Icons.Default.Navigation, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (canNavigate) "Start navigation" else "No map pin")
+                        Text(
+                            if (canNavigate) {
+                                stringResource(R.string.nav_start)
+                            } else {
+                                stringResource(R.string.nav_no_pin)
+                            },
+                        )
                     }
                     if (canNavigate) {
                         ExternalMapsRow(onClick = { onOpenExternalMaps(next) })
@@ -316,7 +342,7 @@ private fun ActionRow(
         ) {
             Icon(Icons.Default.CheckCircle, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Mark done")
+            Text(stringResource(R.string.nav_mark_done))
         }
         OutlinedButton(
             onClick = onEndDelivery,
@@ -325,7 +351,7 @@ private fun ActionRow(
         ) {
             Icon(Icons.Default.Stop, contentDescription = null)
             Spacer(modifier = Modifier.width(6.dp))
-            Text("End")
+            Text(stringResource(R.string.nav_end))
         }
     }
 }
@@ -335,6 +361,6 @@ private fun ExternalMapsRow(onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text("Open in Google Maps / Waze")
+        Text(stringResource(R.string.nav_open_external))
     }
 }

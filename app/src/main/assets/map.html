@@ -296,6 +296,13 @@
     map.getContainer().addEventListener('touchmove', clearLongPress, { passive: true });
     map.getContainer().addEventListener('touchcancel', clearLongPress, { passive: true });
 
+    function flyToPlace(lat, lng, zoom) {
+        followPaused = true;
+        notifyFollowPaused(true);
+        var z = (typeof zoom === 'number' && !isNaN(zoom)) ? zoom : 16;
+        map.setView(L.latLng(lat, lng), z, { animate: true });
+    }
+
     function setUserLocation(lat, lng, fly, bearing) {
         var latlng = L.latLng(lat, lng);
         lastUserLatLng = latlng;

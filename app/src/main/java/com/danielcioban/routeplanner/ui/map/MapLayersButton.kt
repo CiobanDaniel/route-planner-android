@@ -25,8 +25,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
 import com.danielcioban.routeplanner.ui.theme.IslandColors
@@ -52,7 +54,7 @@ fun MapLayersButton(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Map type",
+                        text = stringResource(R.string.map_type_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = IslandColors.onSurface,
@@ -75,13 +77,13 @@ fun MapLayersButton(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = mode.label,
+                                    text = stringResource(mode.labelRes),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium,
                                     color = IslandColors.onSurface,
                                 )
                                 Text(
-                                    text = mode.description,
+                                    text = stringResource(mode.descriptionRes),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = IslandColors.onSurfaceMuted,
                                 )
@@ -114,13 +116,13 @@ fun MapLayersButton(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Follow me",
+                                    text = stringResource(R.string.map_follow_me),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium,
                                     color = IslandColors.onSurface,
                                 )
                                 Text(
-                                    text = "Heading-up camera while you move",
+                                    text = stringResource(R.string.map_follow_me_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = IslandColors.onSurfaceMuted,
                                 )
@@ -141,7 +143,7 @@ fun MapLayersButton(
         FloatingCircleButton(onClick = { expanded = !expanded }) {
             Icon(
                 Icons.Default.Layers,
-                contentDescription = "Map layers",
+                contentDescription = stringResource(R.string.cd_map_layers),
                 tint = IslandColors.onSurface,
             )
         }

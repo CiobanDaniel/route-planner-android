@@ -7,6 +7,9 @@
     <string name="action_cancel">Anulează</string>
     <string name="action_add">Adaugă</string>
     <string name="action_navigate">Navighează</string>
+    <string name="action_delete">Șterge</string>
+    <string name="action_edit">Editează</string>
+    <string name="action_start">Pornește</string>
     <string name="coming_soon">În curând</string>
 
     <string name="menu_title">Meniu</string>
@@ -48,4 +51,113 @@
     <string name="dialog_stop_details">Detalii oprire</string>
     <string name="dialog_name">Nume</string>
     <string name="dialog_maps">Hărți</string>
+    <string name="dialog_pinned_coords">Fixat %1$.5f, %2$.5f</string>
+    <string name="dialog_no_map_pin">Nicio poziție pe hartă — ține apăsat pe hartă sau editează ruta.</string>
+    <string name="dialog_delete_stop_title">Ștergi această oprire?</string>
+    <string name="dialog_delete_stop_body">„%1$s” va fi eliminată din rută.</string>
+
+    <string name="cd_back">Înapoi</string>
+    <string name="cd_edit">Editează</string>
+    <string name="cd_recenter">Centrează</string>
+    <string name="cd_add_my_location">Adaugă / mergi la locația mea</string>
+    <string name="cd_my_location">Locația mea</string>
+    <string name="cd_move_up">Mută în sus</string>
+    <string name="cd_move_down">Mută în jos</string>
+    <string name="cd_remove">Elimină</string>
+    <string name="cd_map_layers">Straturi hartă</string>
+
+    <string name="route_fallback_name">Rută</string>
+    <string name="detail_map_free">Hartă liberă · atinge locația pentru a relua</string>
+    <string name="detail_delivery_active">Livrare activă · %1$d rămase</string>
+    <string name="detail_long_press_hint">Ține apăsat pe hartă pentru a adăuga o oprire</string>
+    <string name="detail_no_coordinates">Fără coordonate</string>
+    <string name="detail_completed_count">%1$d/%2$d finalizate</string>
+    <string name="msg_no_map_pin">Această oprire nu are încă un pin pe hartă</string>
+    <string name="msg_maps_unavailable">Nu s-a putut deschide Maps sau Waze</string>
+    <string name="msg_allow_location_nav">Permite locația pentru navigare</string>
+    <string name="msg_waiting_gps">Se așteaptă semnal GPS…</string>
+    <string name="msg_allow_location_gps">Permite locația pentru a folosi GPS</string>
+    <string name="gps_stop_default_name">Oprire GPS</string>
+    <string name="distance_away">%1$s distanță · %2$s</string>
+
+    <string name="nav_route_finished">Rută finalizată</string>
+    <string name="nav_navigating_progress">Navigare · %1$d din %2$d</string>
+    <string name="nav_next_stop_progress">Următoarea oprire · %1$d din %2$d</string>
+    <string name="nav_done">Gata</string>
+    <string name="nav_left">%1$d rămase</string>
+    <string name="nav_all_completed">Toate opririle finalizate</string>
+    <string name="nav_end_when_ready">Încheie livrarea când ești gata.</string>
+    <string name="nav_end_delivery">Încheie livrarea</string>
+    <string name="nav_calculating">Se calculează ruta pe drum…</string>
+    <string name="nav_retry_route">Reîncearcă ruta</string>
+    <string name="nav_finished_route">Ai terminat ruta</string>
+    <string name="nav_arrived">Ai ajuns</string>
+    <string name="nav_mark_done_next">Marchează · următoarea</string>
+    <string name="nav_continue_to">Continuă spre %1$s</string>
+    <string name="nav_then">Apoi: %1$s</string>
+    <string name="nav_prev_approx">ant. %1$s</string>
+    <string name="nav_start">Pornește navigarea</string>
+    <string name="nav_no_pin">Fără pin pe hartă</string>
+    <string name="nav_mark_done">Marchează</string>
+    <string name="nav_end">Stop</string>
+    <string name="nav_open_external">Deschide în Google Maps / Waze</string>
+    <string name="nav_approx_banner">Rută aproximativă — drumurile nu sunt disponibile</string>
+    <string name="nav_approx_head">Îndreaptă-te spre %1$s (aprox.)</string>
+    <string name="nav_error_generic">Nu s-a putut calcula o rută</string>
+    <string name="nav_error_waiting_gps">Se așteaptă GPS pentru următoarea oprire</string>
+    <string name="nav_error_next_no_pin">Următoarea oprire nu are pin pe hartă</string>
+    <string name="nav_error_no_pin">Această oprire nu are pin pe hartă</string>
+
+    <string name="notes_banner_title">Note livrare</string>
+
+    <string name="map_type_title">Tip hartă</string>
+    <string name="map_follow_me">Urmărește-mă</string>
+    <string name="map_follow_me_desc">Cameră pe direcție în timp ce te miști</string>
+    <string name="map_type_map">Hartă</string>
+    <string name="map_type_map_desc">Străzi clare — cea mai bună vedere zilnică</string>
+    <string name="map_type_driving">Conducere</string>
+    <string name="map_type_driving_desc">Navigare pe direcție cu focus pe străzi</string>
+    <string name="map_type_satellite">Satelit</string>
+    <string name="map_type_satellite_desc">Imagini aeriene</string>
+    <string name="map_type_terrain">Teren</string>
+    <string name="map_type_terrain_desc">Dealuri și relief</string>
+
+    <string name="edit_new_route">Rută nouă</string>
+    <string name="edit_edit_route">Editează ruta</string>
+    <string name="edit_hint_new">Dă-i un nume, salvează, apoi adaugă opriri pe hartă.</string>
+    <string name="edit_hint_existing">Redenumește, reordonează sau elimină opriri. Pinurile rămân pe hartă.</string>
+    <string name="edit_route_name">Nume rută</string>
+    <string name="edit_notes_optional">Note (opțional)</string>
+    <string name="edit_stops">Opriri</string>
+    <string name="edit_no_stops">Nicio oprire încă — revino și ține apăsat pe hartă pentru a adăuga.</string>
+    <string name="edit_create">Creează ruta</string>
+    <string name="edit_save_changes">Salvează modificările</string>
+    <string name="edit_stop_label">Oprire %1$d</string>
+    <string name="edit_stop_default_name">Oprire %1$d</string>
+    <string name="edit_pinned">Fixat pe hartă</string>
+    <string name="edit_no_pin">Fără pin pe hartă</string>
+
+    <string name="search_title">Caută un loc</string>
+    <string name="search_query_label">Adresă sau loc</string>
+    <string name="search_query_hint">Stradă, magazin, oraș…</string>
+    <string name="search_min_chars">Tastează cel puțin 3 caractere</string>
+    <string name="search_no_results">Niciun loc găsit</string>
+    <string name="search_failed">Căutarea nu a reușit. Verifică conexiunea.</string>
+    <string name="cd_search_place">Caută loc</string>
+    <string name="cd_share_route">Distribuie ruta</string>
+    <string name="dialog_from_search">Din căutare</string>
+
+    <string name="share_route_chooser">Distribuie ruta</string>
+    <string name="action_reset_progress">Resetează</string>
+    <string name="dialog_end_delivery_title">Închei livrarea?</string>
+    <string name="dialog_end_delivery_body">Oprește sesiunea de livrare. Opririle finalizate rămân marcate.</string>
+    <string name="dialog_end_and_reset">Încheie și resetează opririle</string>
+    <string name="dialog_reset_progress_title">Resetezi progresul?</string>
+    <string name="dialog_reset_progress_body">Marchează toate opririle acestei rute ca nefăcute.</string>
+    <string name="home_resume_delivery">Reia livrarea</string>
+    <string name="home_resume_delivery_body">Continuă „%1$s”</string>
+    <string name="home_stops_summary">%1$d opriri · %2$d finalizate</string>
+    <string name="cd_delete_route">Șterge ruta</string>
+    <string name="cd_create_route">Creează rută</string>
+    <string name="cd_share_route_row">Distribuie</string>
 </resources>

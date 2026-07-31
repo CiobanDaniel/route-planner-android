@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +53,7 @@ import com.danielcioban.routeplanner.ui.map.MapViewMode
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.menu.AppMenuPanel
 import com.danielcioban.routeplanner.ui.theme.IslandColors
+import com.danielcioban.routeplanner.util.ShareRoute
 
 @Composable
 fun RouteListScreen(
@@ -58,14 +63,21 @@ fun RouteListScreen(
     onOpenSettings: () -> Unit,
 ) {
     val routes by viewModel.routes.collectAsStateWithLifecycle()
+    val deliverySession by viewModel.deliverySession.collectAsStateWithLifecycle()
     var recenterToken by remember { mutableIntStateOf(0) }
     var mapViewMode by remember { mutableStateOf(MapViewMode.MAP) }
     var driveFollow by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val shareChooserTitle = stringResource(R.string.share_route_chooser)
     val userLocation = rememberUserLocation(
         autoRequest = true,
         highFrequency = driveFollow,
     )
+    val activeDeliveryRoute = remember(routes, deliverySession.activeRouteId) {
+        val id = deliverySession.activeRouteId ?: return@remember null
+        routes.firstOrNull { it.route.id == id }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         RouteMapBackdrop(
@@ -154,7 +166,7 @@ fun RouteListScreen(
                     ) {
                         Icon(
                             Icons.Default.MyLocation,
-                            contentDescription = "My location",
+                            contentDescription = stringResource(R.string.cd_my_location),
                             tint = IslandColors.onSurface,
                         )
                     }
@@ -178,6 +190,47 @@ fun RouteListScreen(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            if (activeDeliveryRoute != null) {
+                FloatingIsland(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    contentPadding = 14.dp,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.home_resume_delivery),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.home_resume_delivery_body,
+                                    activeDeliveryRoute.route.name,
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = IslandColors.onSurfaceMuted,
+                            )
+                        }
+                        Button(
+                            onClick = { onOpenRoute(activeDeliveryRoute.route.id) },
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.action_start))
+                        }
+                    }
+                }
+            }
 
             FloatingIsland(
                 modifier = Modifier
@@ -211,7 +264,10 @@ fun RouteListScreen(
                             )
                         }
                         FloatingCircleButton(onClick = onCreateRoute) {
-                            Icon(Icons.Default.Add, contentDescription = "Create route")
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = stringResource(R.string.cd_create_route),
+                            )
                         }
                     }
 
@@ -230,7 +286,11 @@ fun RouteListScreen(
                             items(routes, key = { it.route.id }) { route ->
                                 RouteListRow(
                                     route = route,
+                                    isActiveDelivery = route.route.id == deliverySession.activeRouteId,
                                     onClick = { onOpenRoute(route.route.id) },
+                                    onShare = {
+                                        ShareRoute.share(context, route, shareChooserTitle)
+                                    },
                                     onDelete = { viewModel.deleteRoute(route.route.id) },
                                 )
                                 HorizontalDivider(
@@ -249,7 +309,9 @@ fun RouteListScreen(
 @Composable
 private fun RouteListRow(
     route: RouteWithStops,
+    isActiveDelivery: Boolean,
     onClick: () -> Unit,
+    onShare: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Row(
@@ -266,15 +328,34 @@ private fun RouteListRow(
                 color = IslandColors.onSurface,
             )
             Text(
-                text = "${route.stops.size} stops · ${route.completedCount} done",
+                text = if (isActiveDelivery) {
+                    stringResource(R.string.home_resume_delivery)
+                } else {
+                    stringResource(
+                        R.string.home_stops_summary,
+                        route.stops.size,
+                        route.completedCount,
+                    )
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = IslandColors.onSurfaceMuted,
+                color = if (isActiveDelivery) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    IslandColors.onSurfaceMuted
+                },
+            )
+        }
+        IconButton(onClick = onShare) {
+            Icon(
+                Icons.Default.Share,
+                contentDescription = stringResource(R.string.cd_share_route_row),
+                tint = IslandColors.onSurfaceMuted,
             )
         }
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Default.Delete,
-                contentDescription = "Delete route",
+                contentDescription = stringResource(R.string.cd_delete_route),
                 tint = IslandColors.onSurfaceMuted,
             )
         }

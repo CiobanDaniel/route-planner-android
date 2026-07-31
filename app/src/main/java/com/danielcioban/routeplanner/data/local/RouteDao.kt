@@ -46,8 +46,14 @@ interface RouteDao {
     @Query("DELETE FROM stops WHERE routeId = :routeId")
     suspend fun deleteStopsForRoute(routeId: Long)
 
+    @Query("DELETE FROM stops WHERE id = :stopId")
+    suspend fun deleteStop(stopId: Long)
+
     @Query("UPDATE stops SET isCompleted = :completed WHERE id = :stopId")
     suspend fun setStopCompleted(stopId: Long, completed: Boolean)
+
+    @Query("UPDATE stops SET isCompleted = 0 WHERE routeId = :routeId")
+    suspend fun resetStopCompletions(routeId: Long)
 
     @Query("UPDATE routes SET updatedAtEpochMs = :updatedAt WHERE id = :routeId")
     suspend fun touchRoute(routeId: Long, updatedAt: Long = System.currentTimeMillis())

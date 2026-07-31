@@ -1,10 +1,13 @@
 package com.danielcioban.routeplanner.ui.routes
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.RouteRepository
 import com.danielcioban.routeplanner.data.StopDraft
+import com.danielcioban.routeplanner.data.delivery.DeliverySessionStore
 import com.danielcioban.routeplanner.data.local.RouteWithStops
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.data.routing.DrivingRoute
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -25,6 +29,8 @@ import kotlinx.coroutines.launch
 data class PendingStopPin(
     val latitude: Double,
     val longitude: Double,
+    val suggestedName: String = "",
+    val addressHint: String = "",
 )
 
 data class DeliveryProgress(
@@ -48,7 +54,7 @@ data class NavigationUiState(
     val targetStopId: Long? = null,
     val route: DrivingRoute? = null,
     val guidance: NavGuidance? = null,
-    val errorMessage: String? = null,
+    @param:StringRes val errorMessageRes: Int? = null,
     val navLineJson: String? = null,
     val navFitToken: Int = 0,
 )
@@ -56,6 +62,7 @@ data class NavigationUiState(
 class RouteDetailViewModel(
     private val repository: RouteRepository,
     private val routeId: Long,
+    private val deliverySessionStore: DeliverySessionStore,
     private val routingClient: OsrmRoutingClient = OsrmRoutingClient(),
 ) : ViewModel() {
     val route: StateFlow<RouteWithStops?> = repository.observeRoute(routeId)
@@ -77,9 +84,41 @@ class RouteDetailViewModel(
     private var lastRecalcAtMs: Long = 0L
     private var lastUserFix: LatLng? = null
 
+    init {
+        viewModelScope.launch {
+            val session = deliverySessionStore.session.first()
+            if (session.activeRouteId == routeId) {
+                _deliveryActive.value = true
+            }
+        }
+    }
+
     fun setDeliveryActive(active: Boolean) {
         _deliveryActive.value = active
-        if (!active) {
+        viewModelScope.launch {
+            if (active) {
+                deliverySessionStore.setActiveRoute(routeId)
+            } else {
+                deliverySessionStore.clearIfRoute(routeId)
+            }
+        }
+        if (!active) stopNavigation()
+    }
+
+    fun resetCompletions() {
+        viewModelScope.launch {
+            repository.resetStopCompletions(routeId)
+            stopNavigation()
+        }
+    }
+
+    fun endDelivery(resetCompletions: Boolean) {
+        viewModelScope.launch {
+            if (resetCompletions) {
+                repository.resetStopCompletions(routeId)
+            }
+            _deliveryActive.value = false
+            deliverySessionStore.clearIfRoute(routeId)
             stopNavigation()
         }
     }
@@ -88,8 +127,18 @@ class RouteDetailViewModel(
         _selectedStopId.value = stopId
     }
 
-    fun beginAddStopAt(latitude: Double, longitude: Double) {
-        _pendingPin.value = PendingStopPin(latitude, longitude)
+    fun beginAddStopAt(
+        latitude: Double,
+        longitude: Double,
+        suggestedName: String = "",
+        addressHint: String = "",
+    ) {
+        _pendingPin.value = PendingStopPin(
+            latitude = latitude,
+            longitude = longitude,
+            suggestedName = suggestedName,
+            addressHint = addressHint,
+        )
     }
 
     fun cancelPendingPin() {
@@ -106,6 +155,7 @@ class RouteDetailViewModel(
                 StopDraft(
                     name = trimmed,
                     notes = notes.trim(),
+                    addressHint = pin.addressHint.trim(),
                     latitude = pin.latitude,
                     longitude = pin.longitude,
                 ),
@@ -132,12 +182,24 @@ class RouteDetailViewModel(
         }
     }
 
+    fun deleteStop(stopId: Long) {
+        viewModelScope.launch {
+            repository.deleteStop(stopId, routeId)
+            if (_selectedStopId.value == stopId) {
+                _selectedStopId.value = null
+            }
+            if (_navigation.value.targetStopId == stopId) {
+                stopNavigation()
+            }
+        }
+    }
+
     fun addStopAtCurrentLocation(name: String, latitude: Double, longitude: Double) {
         viewModelScope.launch {
             repository.addStop(
                 routeId,
                 StopDraft(
-                    name = name.trim().ifEmpty { "Current location" },
+                    name = name.trim().ifEmpty { "GPS stop" },
                     latitude = latitude,
                     longitude = longitude,
                 ),
@@ -172,7 +234,7 @@ class RouteDetailViewModel(
                 _navigation.value = NavigationUiState(
                     phase = NavigationPhase.Error,
                     targetStopId = following.id,
-                    errorMessage = "Waiting for GPS to route to the next stop",
+                    errorMessageRes = R.string.nav_error_waiting_gps,
                 )
                 return@launch
             }
@@ -180,7 +242,7 @@ class RouteDetailViewModel(
                 _navigation.value = NavigationUiState(
                     phase = NavigationPhase.Error,
                     targetStopId = following.id,
-                    errorMessage = "Next stop has no map pin",
+                    errorMessageRes = R.string.nav_error_next_no_pin,
                 )
                 return@launch
             }
@@ -199,7 +261,7 @@ class RouteDetailViewModel(
         if (next == null) {
             _navigation.value = NavigationUiState(
                 phase = NavigationPhase.Arrived,
-                errorMessage = null,
+                errorMessageRes = null,
             )
             return
         }
@@ -214,11 +276,14 @@ class RouteDetailViewModel(
             _navigation.value = NavigationUiState(
                 phase = NavigationPhase.Error,
                 targetStopId = stop.id,
-                errorMessage = "This stop has no map pin",
+                errorMessageRes = R.string.nav_error_no_pin,
             )
             return
         }
         _deliveryActive.value = true
+        viewModelScope.launch {
+            deliverySessionStore.setActiveRoute(routeId)
+        }
         fetchRoute(
             from = userLocation,
             to = LatLng(lat, lng),
@@ -279,41 +344,33 @@ class RouteDetailViewModel(
             it.copy(
                 phase = NavigationPhase.LoadingRoute,
                 targetStopId = targetStopId,
-                errorMessage = null,
+                errorMessageRes = null,
             )
         }
         routeJob = viewModelScope.launch {
             val result = routingClient.routeDriving(from, to)
-            result.fold(
-                onSuccess = { driving ->
-                    lastRecalcAtMs = System.currentTimeMillis()
-                    val guidance = NavigationProgress.evaluate(driving, from, to)
-                    _navigation.update {
-                        val fitToken = if (fitMap) it.navFitToken + 1 else it.navFitToken
-                        it.copy(
-                            phase = if (guidance.arrived) NavigationPhase.Arrived else NavigationPhase.Navigating,
-                            targetStopId = targetStopId,
-                            route = driving,
-                            guidance = guidance,
-                            errorMessage = null,
-                            navLineJson = driving.toLineGeoJson(),
-                            navFitToken = fitToken,
-                        )
-                    }
-                },
-                onFailure = { err ->
-                    _navigation.update {
-                        it.copy(
-                            phase = NavigationPhase.Error,
-                            targetStopId = targetStopId,
-                            errorMessage = err.message ?: "Couldn’t fetch a driving route",
-                            route = null,
-                            guidance = null,
-                            navLineJson = null,
-                        )
-                    }
-                },
-            )
+            val driving = result.getOrElse {
+                DrivingRoute.straightLine(
+                    from = from,
+                    to = to,
+                    headInstruction = "Head toward destination",
+                    arriveInstruction = "You have arrived",
+                )
+            }
+            lastRecalcAtMs = System.currentTimeMillis()
+            val guidance = NavigationProgress.evaluate(driving, from, to)
+            _navigation.update {
+                val fitToken = if (fitMap) it.navFitToken + 1 else it.navFitToken
+                it.copy(
+                    phase = if (guidance.arrived) NavigationPhase.Arrived else NavigationPhase.Navigating,
+                    targetStopId = targetStopId,
+                    route = driving,
+                    guidance = guidance,
+                    errorMessageRes = null,
+                    navLineJson = driving.toLineGeoJson(),
+                    navFitToken = fitToken,
+                )
+            }
         }
     }
 
@@ -359,10 +416,11 @@ class RouteDetailViewModel(
     class Factory(
         private val repository: RouteRepository,
         private val routeId: Long,
+        private val deliverySessionStore: DeliverySessionStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return RouteDetailViewModel(repository, routeId) as T
+            return RouteDetailViewModel(repository, routeId, deliverySessionStore) as T
         }
     }
 }

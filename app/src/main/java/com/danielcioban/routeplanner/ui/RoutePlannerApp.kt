@@ -32,6 +32,7 @@ fun RoutePlannerApp(
     val app = remember { context.applicationContext as RoutePlannerApplication }
     val repository = remember { app.repository }
     val settingsRepository = remember { app.settingsRepository }
+    val deliverySessionStore = remember { app.deliverySessionStore }
     val navController = rememberNavController()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -42,7 +43,7 @@ fun RoutePlannerApp(
         ) {
             composable(AppDestinations.ROUTE_LIST) {
                 val viewModel: RouteListViewModel = viewModel(
-                    factory = RouteListViewModel.Factory(repository),
+                    factory = RouteListViewModel.Factory(repository, deliverySessionStore),
                 )
                 RouteListScreen(
                     viewModel = viewModel,
@@ -60,7 +61,7 @@ fun RoutePlannerApp(
             ) { entry ->
                 val routeId = entry.arguments?.getLong("routeId") ?: return@composable
                 val viewModel: RouteDetailViewModel = viewModel(
-                    factory = RouteDetailViewModel.Factory(repository, routeId),
+                    factory = RouteDetailViewModel.Factory(repository, routeId, deliverySessionStore),
                 )
                 RouteDetailScreen(
                     viewModel = viewModel,
