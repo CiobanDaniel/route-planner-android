@@ -73,6 +73,9 @@ private class MapWebState {
     var lastNavLine: String? = null
     var lastNavFitToken: Int = 0
     var pendingResumeFollow: Boolean = false
+    var lastFocus: LatLng? = null
+    var lastFocusToken: Int = 0
+    var pushedFocusToken: Int = -1
 
     var pushedStyleId: String? = null
     var pushedDriveFollow: Boolean? = null
@@ -99,6 +102,8 @@ fun RouteMapBackdrop(
     onMapLongClick: ((LatLng) -> Unit)? = null,
     onStopClick: ((Long) -> Unit)? = null,
     onFollowPaused: ((Boolean) -> Unit)? = null,
+    focusTarget: LatLng? = null,
+    focusToken: Int = 0,
 ) {
     val pointsJson = remember(stops) { stopsToPointsGeoJson(stops) }
     val lineJson = remember(stops, showStraightStopLinks) {
@@ -139,6 +144,7 @@ fun RouteMapBackdrop(
                         webState.fittedRouteSignature = null
                         webState.pushedUserKey = null
                         webState.pushedNavKey = null
+                        webState.pushedFocusToken = -1
                         pushAll(
                             view,
                             webState,
@@ -163,6 +169,8 @@ fun RouteMapBackdrop(
             webState.lastDriveFollow = driveFollow
             webState.lastNavLine = navRouteLineJson
             webState.lastNavFitToken = navRouteFitToken
+            webState.lastFocus = focusTarget
+            webState.lastFocusToken = focusToken
             if (webState.pageReady) {
                 pushAll(webView, webState, forceFlyToUser = shouldFly)
                 webState.lastRecenterToken = recenterToken
@@ -230,6 +238,15 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
     if (state.pendingResumeFollow) {
         webView.evaluateJavascript("window.resumeDriveFollow && resumeDriveFollow();", null)
         state.pendingResumeFollow = false
+    }
+
+    val focus = state.lastFocus
+    if (focus != null && state.pushedFocusToken != state.lastFocusToken) {
+        webView.evaluateJavascript(
+            "window.flyToPlace && flyToPlace(${focus.latitude}, ${focus.longitude}, 16);",
+            null,
+        )
+        state.pushedFocusToken = state.lastFocusToken
     }
 }
 

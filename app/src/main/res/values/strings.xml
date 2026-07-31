@@ -7,6 +7,9 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_add">Add</string>
     <string name="action_navigate">Navigate</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_start">Start</string>
     <string name="coming_soon">Coming soon</string>
 
     <string name="menu_title">Menu</string>
@@ -48,4 +51,113 @@
     <string name="dialog_stop_details">Stop details</string>
     <string name="dialog_name">Name</string>
     <string name="dialog_maps">Maps</string>
+    <string name="dialog_pinned_coords">Pinned %1$.5f, %2$.5f</string>
+    <string name="dialog_no_map_pin">No map pin yet — long-press the map or edit the route.</string>
+    <string name="dialog_delete_stop_title">Delete this stop?</string>
+    <string name="dialog_delete_stop_body">“%1$s” will be removed from the route.</string>
+
+    <string name="cd_back">Back</string>
+    <string name="cd_edit">Edit</string>
+    <string name="cd_recenter">Recenter</string>
+    <string name="cd_add_my_location">Add / go to my location</string>
+    <string name="cd_my_location">My location</string>
+    <string name="cd_move_up">Move up</string>
+    <string name="cd_move_down">Move down</string>
+    <string name="cd_remove">Remove</string>
+    <string name="cd_map_layers">Map layers</string>
+
+    <string name="route_fallback_name">Route</string>
+    <string name="detail_map_free">Map free · tap location to resume</string>
+    <string name="detail_delivery_active">Delivery active · %1$d left</string>
+    <string name="detail_long_press_hint">Long-press map to add a stop</string>
+    <string name="detail_no_coordinates">No coordinates</string>
+    <string name="detail_completed_count">%1$d/%2$d completed</string>
+    <string name="msg_no_map_pin">This stop has no map pin yet</string>
+    <string name="msg_maps_unavailable">Couldn’t open Maps or Waze</string>
+    <string name="msg_allow_location_nav">Allow location access to navigate</string>
+    <string name="msg_waiting_gps">Waiting for GPS fix…</string>
+    <string name="msg_allow_location_gps">Allow location access to use GPS</string>
+    <string name="gps_stop_default_name">GPS stop</string>
+    <string name="distance_away">%1$s away · %2$s</string>
+
+    <string name="nav_route_finished">Route finished</string>
+    <string name="nav_navigating_progress">Navigating · %1$d of %2$d</string>
+    <string name="nav_next_stop_progress">Next stop · %1$d of %2$d</string>
+    <string name="nav_done">Done</string>
+    <string name="nav_left">%1$d left</string>
+    <string name="nav_all_completed">All stops completed</string>
+    <string name="nav_end_when_ready">End delivery when you’re ready.</string>
+    <string name="nav_end_delivery">End delivery</string>
+    <string name="nav_calculating">Calculating road route…</string>
+    <string name="nav_retry_route">Retry route</string>
+    <string name="nav_finished_route">You’ve finished the route</string>
+    <string name="nav_arrived">You’ve arrived</string>
+    <string name="nav_mark_done_next">Mark done · next stop</string>
+    <string name="nav_continue_to">Continue to %1$s</string>
+    <string name="nav_then">Then: %1$s</string>
+    <string name="nav_prev_approx">prev %1$s</string>
+    <string name="nav_start">Start navigation</string>
+    <string name="nav_no_pin">No map pin</string>
+    <string name="nav_mark_done">Mark done</string>
+    <string name="nav_end">End</string>
+    <string name="nav_open_external">Open in Google Maps / Waze</string>
+    <string name="nav_approx_banner">Approximate route — roads unavailable</string>
+    <string name="nav_approx_head">Head toward %1$s (approx.)</string>
+    <string name="nav_error_generic">Couldn’t calculate a route</string>
+    <string name="nav_error_waiting_gps">Waiting for GPS to route to the next stop</string>
+    <string name="nav_error_next_no_pin">Next stop has no map pin</string>
+    <string name="nav_error_no_pin">This stop has no map pin</string>
+
+    <string name="notes_banner_title">Delivery notes</string>
+
+    <string name="map_type_title">Map type</string>
+    <string name="map_follow_me">Follow me</string>
+    <string name="map_follow_me_desc">Heading-up camera while you move</string>
+    <string name="map_type_map">Map</string>
+    <string name="map_type_map_desc">Clear streets — best everyday view</string>
+    <string name="map_type_driving">Driving</string>
+    <string name="map_type_driving_desc">Heading-up nav with street focus</string>
+    <string name="map_type_satellite">Satellite</string>
+    <string name="map_type_satellite_desc">Aerial imagery</string>
+    <string name="map_type_terrain">Terrain</string>
+    <string name="map_type_terrain_desc">Hills and elevation</string>
+
+    <string name="edit_new_route">New route</string>
+    <string name="edit_edit_route">Edit route</string>
+    <string name="edit_hint_new">Name it, save, then drop stops on the map.</string>
+    <string name="edit_hint_existing">Rename, reorder, or remove stops. Pins stay on the map.</string>
+    <string name="edit_route_name">Route name</string>
+    <string name="edit_notes_optional">Notes (optional)</string>
+    <string name="edit_stops">Stops</string>
+    <string name="edit_no_stops">No stops yet — go back and long-press the map to add some.</string>
+    <string name="edit_create">Create route</string>
+    <string name="edit_save_changes">Save changes</string>
+    <string name="edit_stop_label">Stop %1$d</string>
+    <string name="edit_stop_default_name">Stop %1$d</string>
+    <string name="edit_pinned">Pinned on map</string>
+    <string name="edit_no_pin">No map pin</string>
+
+    <string name="search_title">Find a place</string>
+    <string name="search_query_label">Address or place</string>
+    <string name="search_query_hint">Street, shop, city…</string>
+    <string name="search_min_chars">Type at least 3 characters</string>
+    <string name="search_no_results">No places found</string>
+    <string name="search_failed">Couldn’t search right now. Check your connection.</string>
+    <string name="cd_search_place">Search place</string>
+    <string name="cd_share_route">Share route</string>
+    <string name="dialog_from_search">From search</string>
+
+    <string name="share_route_chooser">Share route</string>
+    <string name="action_reset_progress">Reset</string>
+    <string name="dialog_end_delivery_title">End delivery?</string>
+    <string name="dialog_end_delivery_body">Stop the delivery session. Completed stops stay marked done.</string>
+    <string name="dialog_end_and_reset">End and reset all stops</string>
+    <string name="dialog_reset_progress_title">Reset progress?</string>
+    <string name="dialog_reset_progress_body">Mark every stop on this route as not done.</string>
+    <string name="home_resume_delivery">Resume delivery</string>
+    <string name="home_resume_delivery_body">Continue “%1$s”</string>
+    <string name="home_stops_summary">%1$d stops · %2$d done</string>
+    <string name="cd_delete_route">Delete route</string>
+    <string name="cd_create_route">Create route</string>
+    <string name="cd_share_route_row">Share</string>
 </resources>

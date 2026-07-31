@@ -58,6 +58,11 @@ class RouteRepository(db: AppDatabase) {
         dao.setStopCompleted(stopId, completed)
     }
 
+    suspend fun resetStopCompletions(routeId: Long) {
+        dao.resetStopCompletions(routeId)
+        dao.touchRoute(routeId)
+    }
+
     suspend fun addStop(routeId: Long, stop: StopDraft): Long {
         val nextPosition = dao.maxStopPosition(routeId) + 1
         val id = dao.insertStop(
@@ -79,6 +84,11 @@ class RouteRepository(db: AppDatabase) {
     suspend fun updateStop(stop: StopEntity) {
         dao.updateStop(stop)
         dao.touchRoute(stop.routeId)
+    }
+
+    suspend fun deleteStop(stopId: Long, routeId: Long) {
+        dao.deleteStop(stopId)
+        dao.touchRoute(routeId)
     }
 
     private suspend fun replaceStops(routeId: Long, stops: List<StopDraft>) {

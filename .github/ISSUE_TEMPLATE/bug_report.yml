@@ -1,0 +1,54 @@
+name: Bug report
+description: Something is broken or unexpected
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong in one or two sentences?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps that reliably reproduce the issue
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: e.g. 0.3.0 (Settings / about, or versionName in build.gradle.kts)
+    validations:
+      required: false
+  - type: input
+    id: device
+    attributes:
+      label: Device / OS
+      description: e.g. Pixel 7, Android 15 / emulator API 35
+    validations:
+      required: false
+  - type: textarea
+    id: extras
+    attributes:
+      label: Logs / screenshots
+      description: Paste logcat snippets or attach images if useful

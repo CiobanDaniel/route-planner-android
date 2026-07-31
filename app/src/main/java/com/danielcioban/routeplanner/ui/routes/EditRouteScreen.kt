@@ -40,9 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
@@ -101,7 +103,10 @@ fun EditRouteScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 FloatingCircleButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.cd_back),
+                    )
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 FloatingCircleButton(
@@ -114,7 +119,10 @@ fun EditRouteScreen(
                         }
                     },
                 ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "My location")
+                    Icon(
+                        Icons.Default.MyLocation,
+                        contentDescription = stringResource(R.string.cd_my_location),
+                    )
                 }
             }
 
@@ -143,17 +151,17 @@ fun EditRouteScreen(
                     ) {
                         item {
                             Text(
-                                text = if (isNew) "New route" else "Edit route",
+                                text = stringResource(
+                                    if (isNew) R.string.edit_new_route else R.string.edit_edit_route,
+                                ),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = IslandColors.onSurface,
                             )
                             Text(
-                                text = if (isNew) {
-                                    "Name it, save, then drop stops on the map."
-                                } else {
-                                    "Rename, reorder, or remove stops. Pins stay on the map."
-                                },
+                                text = stringResource(
+                                    if (isNew) R.string.edit_hint_new else R.string.edit_hint_existing,
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = IslandColors.onSurfaceMuted,
                                 modifier = Modifier.padding(top = 4.dp),
@@ -163,21 +171,21 @@ fun EditRouteScreen(
                             SoftField(
                                 value = state.routeName,
                                 onValueChange = viewModel::updateRouteName,
-                                label = "Route name",
+                                label = stringResource(R.string.edit_route_name),
                             )
                         }
                         item {
                             SoftField(
                                 value = state.routeNotes,
                                 onValueChange = viewModel::updateRouteNotes,
-                                label = "Notes (optional)",
+                                label = stringResource(R.string.edit_notes_optional),
                                 singleLine = false,
                             )
                         }
                         if (!isNew) {
                             item {
                                 Text(
-                                    text = "Stops",
+                                    text = stringResource(R.string.edit_stops),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
                                 )
@@ -185,7 +193,7 @@ fun EditRouteScreen(
                             if (state.stops.isEmpty()) {
                                 item {
                                     Text(
-                                        text = "No stops yet — go back and long-press the map to add some.",
+                                        text = stringResource(R.string.edit_no_stops),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -229,7 +237,11 @@ fun EditRouteScreen(
                                         color = MaterialTheme.colorScheme.onPrimary,
                                     )
                                 }
-                                Text(if (isNew) "Create route" else "Save changes")
+                                Text(
+                                    stringResource(
+                                        if (isNew) R.string.edit_create else R.string.edit_save_changes,
+                                    ),
+                                )
                             }
                         }
                     }
@@ -279,13 +291,13 @@ private fun CompactStopRow(
         SoftField(
             value = stop.name,
             onValueChange = { value -> onChange { it.copy(name = value) } },
-            label = "Stop $index",
+            label = stringResource(R.string.edit_stop_label, index),
         )
         SoftOutlinedTextField(
             value = stop.notes,
             onValueChange = { value -> onChange { it.copy(notes = value) } },
-            label = "Delivery notes",
-            placeholder = "Gate code, phone, leave at door…",
+            label = stringResource(R.string.dialog_delivery_notes),
+            placeholder = stringResource(R.string.dialog_delivery_notes_hint),
             singleLine = false,
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
@@ -303,19 +315,21 @@ private fun CompactStopRow(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = if (hasPin) "Pinned on map" else "No map pin",
+                text = stringResource(
+                    if (hasPin) R.string.edit_pinned else R.string.edit_no_pin,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = IslandColors.onSurfaceMuted,
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.cd_move_up))
             }
             IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_move_down))
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "Remove")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_remove))
             }
         }
     }

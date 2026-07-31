@@ -18,9 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
@@ -58,7 +60,7 @@ fun StopNotesBanner(
         Spacer(modifier = Modifier.width(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = "Delivery notes",
+                text = stringResource(R.string.notes_banner_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.secondary,

@@ -23,11 +23,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,18 +51,21 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.data.settings.AppSettings
+import com.danielcioban.routeplanner.ui.components.AddressSearchDialog
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
 import com.danielcioban.routeplanner.ui.components.IslandDialog
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
 import com.danielcioban.routeplanner.ui.location.rememberDeviceBearing
 import com.danielcioban.routeplanner.ui.location.rememberUserLocation
+import com.danielcioban.routeplanner.ui.map.LatLng
 import com.danielcioban.routeplanner.ui.map.MapLayersButton
 import com.danielcioban.routeplanner.ui.map.MapViewMode
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import com.danielcioban.routeplanner.util.ExternalNavigation
 import com.danielcioban.routeplanner.util.GeoUtils
+import com.danielcioban.routeplanner.util.ShareRoute
 
 @Composable
 fun RouteDetailScreen(
@@ -74,9 +80,15 @@ fun RouteDetailScreen(
     val selectedStopId by viewModel.selectedStopId.collectAsStateWithLifecycle()
     val navigation by viewModel.navigation.collectAsStateWithLifecycle()
     var recenterToken by remember { mutableIntStateOf(0) }
+    var focusToken by remember { mutableIntStateOf(0) }
+    var focusTarget by remember { mutableStateOf<LatLng?>(null) }
     var mapViewMode by remember { mutableStateOf(MapViewMode.MAP) }
     var driveFollow by remember { mutableStateOf(false) }
     var followPaused by remember { mutableStateOf(false) }
+    var showAddressSearch by remember { mutableStateOf(false) }
+    var showEndDeliveryDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
+    val shareChooserTitle = stringResource(R.string.share_route_chooser)
     val inAppNavigating = navigation.phase == NavigationPhase.Navigating ||
         navigation.phase == NavigationPhase.LoadingRoute ||
         navigation.phase == NavigationPhase.Arrived
@@ -116,7 +128,7 @@ fun RouteDetailScreen(
     val selectedStop = stops.firstOrNull { it.id == selectedStopId }
     val progress = viewModel.deliveryProgress()
     val hasPinnedStops = stops.any { it.latitude != null && it.longitude != null }
-    val distanceFromYou = remember(userFix, progress.nextStop) {
+    val distanceFromYou = remember(userFix, progress.nextStop, settings.distanceUnit) {
         val user = userFix
         val next = progress.nextStop
         if (user != null && next?.latitude != null && next.longitude != null) {
@@ -132,7 +144,11 @@ fun RouteDetailScreen(
                 next.latitude!!,
                 next.longitude!!,
             )
-            "${GeoUtils.formatDistance(meters, settings.distanceUnit)} away · ${GeoUtils.formatBearing(bearing)}"
+            context.getString(
+                R.string.distance_away,
+                GeoUtils.formatDistance(meters, settings.distanceUnit),
+                GeoUtils.formatBearing(bearing),
+            )
         } else {
             null
         }
@@ -142,7 +158,7 @@ fun RouteDetailScreen(
         val lat = stop.latitude
         val lng = stop.longitude
         if (lat == null || lng == null) {
-            locationMessage = "This stop has no map pin yet"
+            locationMessage = context.getString(R.string.msg_no_map_pin)
             return
         }
         val opened = ExternalNavigation.openDrivingDirections(
@@ -152,7 +168,7 @@ fun RouteDetailScreen(
             label = stop.name,
         )
         if (!opened) {
-            locationMessage = "Couldn’t open Maps or Waze"
+            locationMessage = context.getString(R.string.msg_maps_unavailable)
         }
     }
 
@@ -160,12 +176,12 @@ fun RouteDetailScreen(
         val fix = userFix
         if (!userLocation.hasPermission) {
             userLocation.requestPermission()
-            locationMessage = "Allow location access to navigate"
+            locationMessage = context.getString(R.string.msg_allow_location_nav)
             return
         }
         if (fix == null) {
             userLocation.refresh()
-            locationMessage = "Waiting for GPS fix…"
+            locationMessage = context.getString(R.string.msg_waiting_gps)
             return
         }
         locationMessage = null
@@ -200,6 +216,8 @@ fun RouteDetailScreen(
             },
             onStopClick = { id -> viewModel.selectStop(id) },
             onFollowPaused = { paused -> followPaused = paused },
+            focusTarget = focusTarget,
+            focusToken = focusToken,
         )
 
         Column(
@@ -222,34 +240,51 @@ fun RouteDetailScreen(
                         FloatingCircleButton(onClick = onBack) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.cd_back),
                                 tint = IslandColors.onSurface,
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = data?.route?.name ?: "Route",
+                                text = data?.route?.name ?: stringResource(R.string.route_fallback_name),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = IslandColors.onSurface,
                             )
                             Text(
                                 text = when {
-                                    followPaused && navigating -> "Map free · tap location to resume"
-                                    deliveryActive -> "Delivery active · ${progress.remaining} left"
-                                    else -> "Long-press map to add a stop"
+                                    followPaused && navigating -> stringResource(R.string.detail_map_free)
+                                    deliveryActive -> stringResource(
+                                        R.string.detail_delivery_active,
+                                        progress.remaining,
+                                    )
+                                    else -> stringResource(R.string.detail_long_press_hint)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = IslandColors.onSurfaceMuted,
                             )
                         }
                         FloatingCircleButton(
+                            onClick = {
+                                data?.let {
+                                    ShareRoute.share(context, it, shareChooserTitle)
+                                }
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Share,
+                                contentDescription = stringResource(R.string.cd_share_route),
+                                tint = IslandColors.onSurface,
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FloatingCircleButton(
                             onClick = { data?.route?.id?.let(onEdit) },
                         ) {
                             Icon(
                                 Icons.Default.Edit,
-                                contentDescription = "Edit",
+                                contentDescription = stringResource(R.string.cd_edit),
                                 tint = IslandColors.onSurface,
                             )
                         }
@@ -278,6 +313,16 @@ fun RouteDetailScreen(
                         },
                     )
                     Spacer(modifier = Modifier.height(10.dp))
+                    if (!deliveryActive) {
+                        FloatingCircleButton(onClick = { showAddressSearch = true }) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(R.string.cd_search_place),
+                                tint = IslandColors.onSurface,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                     FloatingCircleButton(
                         onClick = {
                             if (navigating) {
@@ -286,12 +331,12 @@ fun RouteDetailScreen(
                             }
                             if (!userLocation.hasPermission) {
                                 userLocation.requestPermission()
-                                locationMessage = "Allow location access to use GPS"
+                                locationMessage = context.getString(R.string.msg_allow_location_gps)
                             } else {
                                 val loc = userFix
                                 if (loc != null) {
                                     viewModel.addStopAtCurrentLocation(
-                                        "GPS stop",
+                                        context.getString(R.string.gps_stop_default_name),
                                         loc.latitude,
                                         loc.longitude,
                                     )
@@ -299,14 +344,16 @@ fun RouteDetailScreen(
                                     recenterToken++
                                 } else {
                                     userLocation.refresh()
-                                    locationMessage = "Waiting for GPS fix…"
+                                    locationMessage = context.getString(R.string.msg_waiting_gps)
                                 }
                             }
                         },
                     ) {
                         Icon(
                             Icons.Default.MyLocation,
-                            contentDescription = if (navigating) "Recenter" else "Add / go to my location",
+                            contentDescription = stringResource(
+                                if (navigating) R.string.cd_recenter else R.string.cd_add_my_location,
+                            ),
                             tint = if (followPaused) MaterialTheme.colorScheme.primary else IslandColors.onSurface,
                         )
                     }
@@ -335,11 +382,7 @@ fun RouteDetailScreen(
                     distanceUnit = settings.distanceUnit,
                     onStartInAppNav = { beginInAppNavigation() },
                     onMarkDone = { viewModel.completeNextStop(userFix) },
-                    onEndDelivery = {
-                        viewModel.setDeliveryActive(false)
-                        driveFollow = false
-                        mapViewMode = MapViewMode.MAP
-                    },
+                    onEndDelivery = { showEndDeliveryDialog = true },
                     onRetryRoute = { beginInAppNavigation() },
                     onOpenExternalMaps = { openExternalMaps(it) },
                 )
@@ -359,17 +402,29 @@ fun RouteDetailScreen(
                                 .padding(horizontal = 4.dp, vertical = 4.dp),
                         ) {
                             Text(
-                                text = "${data?.completedCount ?: 0}/${stops.size} completed",
+                                text = stringResource(
+                                    R.string.detail_completed_count,
+                                    data?.completedCount ?: 0,
+                                    stops.size,
+                                ),
                                 style = MaterialTheme.typography.titleSmall,
                                 modifier = Modifier.weight(1f),
                             )
+                            if ((data?.completedCount ?: 0) > 0) {
+                                TextButton(onClick = { showResetDialog = true }) {
+                                    Text(stringResource(R.string.action_reset_progress))
+                                }
+                            }
                             Button(
-                                onClick = { beginInAppNavigation() },
+                                onClick = {
+                                    viewModel.setDeliveryActive(true)
+                                    beginInAppNavigation()
+                                },
                                 shape = RoundedCornerShape(16.dp),
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Start")
+                                Text(stringResource(R.string.action_start))
                             }
                         }
                         LazyColumn(
@@ -394,7 +449,86 @@ fun RouteDetailScreen(
         }
     }
 
+    if (showEndDeliveryDialog) {
+        IslandDialog(
+            onDismissRequest = { showEndDeliveryDialog = false },
+            title = stringResource(R.string.dialog_end_delivery_title),
+            confirmLabel = stringResource(R.string.nav_end_delivery),
+            onConfirm = {
+                showEndDeliveryDialog = false
+                viewModel.endDelivery(resetCompletions = false)
+                driveFollow = false
+                mapViewMode = MapViewMode.MAP
+            },
+            dismissLabel = stringResource(R.string.action_cancel),
+        ) {
+            Text(
+                text = stringResource(R.string.dialog_end_delivery_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = IslandColors.onSurfaceMuted,
+            )
+            TextButton(
+                onClick = {
+                    showEndDeliveryDialog = false
+                    viewModel.endDelivery(resetCompletions = true)
+                    driveFollow = false
+                    mapViewMode = MapViewMode.MAP
+                },
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text(
+                    stringResource(R.string.dialog_end_and_reset),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+
+    if (showResetDialog) {
+        IslandDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = stringResource(R.string.dialog_reset_progress_title),
+            confirmLabel = stringResource(R.string.action_reset_progress),
+            onConfirm = {
+                showResetDialog = false
+                viewModel.resetCompletions()
+            },
+            dismissLabel = stringResource(R.string.action_cancel),
+        ) {
+            Text(
+                text = stringResource(R.string.dialog_reset_progress_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = IslandColors.onSurfaceMuted,
+            )
+        }
+    }
+
+    if (showAddressSearch && !deliveryActive) {
+        AddressSearchDialog(
+            onDismissRequest = { showAddressSearch = false },
+            near = userFix,
+            onPlaceSelected = { place ->
+                showAddressSearch = false
+                focusTarget = place.coordinate
+                focusToken++
+                newStopName = place.shortName
+                newStopNotes = ""
+                viewModel.beginAddStopAt(
+                    latitude = place.latitude,
+                    longitude = place.longitude,
+                    suggestedName = place.shortName,
+                    addressHint = place.displayName,
+                )
+            },
+        )
+    }
+
     if (pendingPin != null) {
+        LaunchedEffect(pendingPin!!.latitude, pendingPin!!.longitude, pendingPin!!.suggestedName) {
+            if (newStopName.isBlank() && pendingPin!!.suggestedName.isNotBlank()) {
+                newStopName = pendingPin!!.suggestedName
+            }
+        }
         IslandDialog(
             onDismissRequest = {
                 viewModel.cancelPendingPin()
@@ -415,6 +549,13 @@ fun RouteDetailScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = IslandColors.onSurfaceMuted,
             )
+            if (pendingPin!!.addressHint.isNotBlank()) {
+                Text(
+                    text = pendingPin!!.addressHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = IslandColors.onSurfaceMuted,
+                )
+            }
             SoftOutlinedTextField(
                 value = newStopName,
                 onValueChange = { newStopName = it },
@@ -437,82 +578,117 @@ fun RouteDetailScreen(
     if (selectedStop != null && !deliveryActive) {
         var editName by remember(selectedStop.id) { mutableStateOf(selectedStop.name) }
         var editNotes by remember(selectedStop.id) { mutableStateOf(selectedStop.notes) }
-        IslandDialog(
-            onDismissRequest = { viewModel.selectStop(null) },
-            title = stringResource(R.string.dialog_stop_details),
-            confirmLabel = stringResource(R.string.action_save),
-            onConfirm = {
-                viewModel.updateStopDetails(
-                    stopId = selectedStop.id,
-                    name = editName,
-                    notes = editNotes,
-                    addressHint = selectedStop.addressHint,
-                )
-                viewModel.selectStop(null)
-            },
-            dismissLabel = stringResource(R.string.action_close),
-        ) {
-            SoftOutlinedTextField(
-                value = editName,
-                onValueChange = { editName = it },
-                label = stringResource(R.string.dialog_name),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            SoftOutlinedTextField(
-                value = editNotes,
-                onValueChange = { editNotes = it },
-                label = stringResource(R.string.dialog_delivery_notes),
-                placeholder = stringResource(R.string.dialog_delivery_notes_hint),
-                singleLine = false,
-                minLines = 3,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (selectedStop.latitude != null && selectedStop.longitude != null) {
+        var confirmingDelete by remember(selectedStop.id) { mutableStateOf(false) }
+
+        if (confirmingDelete) {
+            IslandDialog(
+                onDismissRequest = { confirmingDelete = false },
+                title = stringResource(R.string.dialog_delete_stop_title),
+                confirmLabel = stringResource(R.string.action_delete),
+                onConfirm = {
+                    viewModel.deleteStop(selectedStop.id)
+                    confirmingDelete = false
+                },
+                dismissLabel = stringResource(R.string.action_cancel),
+                onDismissButton = { confirmingDelete = false },
+            ) {
                 Text(
-                    "Pinned ${"%.5f".format(selectedStop.latitude)}, ${"%.5f".format(selectedStop.longitude)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = stringResource(R.string.dialog_delete_stop_body, selectedStop.name),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = IslandColors.onSurfaceMuted,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.TextButton(
-                        onClick = {
-                            val stop = selectedStop
-                            viewModel.selectStop(null)
-                            val fix = userFix
-                            if (!userLocation.hasPermission) {
-                                userLocation.requestPermission()
-                                locationMessage = "Allow location access to navigate"
-                            } else if (fix == null) {
-                                userLocation.refresh()
-                                locationMessage = "Waiting for GPS fix…"
-                            } else {
-                                locationMessage = null
-                                driveFollow = true
-                                followPaused = false
-                                mapViewMode = MapViewMode.DRIVING
-                                recenterToken++
-                                viewModel.startNavigationToStop(stop, fix)
-                            }
-                        },
-                    ) {
-                        Text(stringResource(R.string.action_navigate))
+            }
+        } else {
+            IslandDialog(
+                onDismissRequest = { viewModel.selectStop(null) },
+                title = stringResource(R.string.dialog_stop_details),
+                confirmLabel = stringResource(R.string.action_save),
+                onConfirm = {
+                    viewModel.updateStopDetails(
+                        stopId = selectedStop.id,
+                        name = editName,
+                        notes = editNotes,
+                        addressHint = selectedStop.addressHint,
+                    )
+                    viewModel.selectStop(null)
+                },
+                dismissLabel = stringResource(R.string.action_close),
+            ) {
+                SoftOutlinedTextField(
+                    value = editName,
+                    onValueChange = { editName = it },
+                    label = stringResource(R.string.dialog_name),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SoftOutlinedTextField(
+                    value = editNotes,
+                    onValueChange = { editNotes = it },
+                    label = stringResource(R.string.dialog_delivery_notes),
+                    placeholder = stringResource(R.string.dialog_delivery_notes_hint),
+                    singleLine = false,
+                    minLines = 3,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (selectedStop.latitude != null && selectedStop.longitude != null) {
+                    Text(
+                        stringResource(
+                            R.string.dialog_pinned_coords,
+                            selectedStop.latitude!!,
+                            selectedStop.longitude!!,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IslandColors.onSurfaceMuted,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                val stop = selectedStop
+                                viewModel.selectStop(null)
+                                val fix = userFix
+                                if (!userLocation.hasPermission) {
+                                    userLocation.requestPermission()
+                                    locationMessage = context.getString(R.string.msg_allow_location_nav)
+                                } else if (fix == null) {
+                                    userLocation.refresh()
+                                    locationMessage = context.getString(R.string.msg_waiting_gps)
+                                } else {
+                                    locationMessage = null
+                                    driveFollow = true
+                                    followPaused = false
+                                    mapViewMode = MapViewMode.DRIVING
+                                    recenterToken++
+                                    viewModel.startNavigationToStop(stop, fix)
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.action_navigate))
+                        }
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                openExternalMaps(selectedStop)
+                                viewModel.selectStop(null)
+                            },
+                        ) {
+                            Text(stringResource(R.string.dialog_maps))
+                        }
                     }
-                    androidx.compose.material3.TextButton(
-                        onClick = {
-                            openExternalMaps(selectedStop)
-                            viewModel.selectStop(null)
-                        },
-                    ) {
-                        Text(stringResource(R.string.dialog_maps))
-                    }
+                } else {
+                    Text(
+                        stringResource(R.string.dialog_no_map_pin),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IslandColors.onSurfaceMuted,
+                    )
                 }
-            } else {
-                Text(
-                    "No map pin yet — long-press the map or edit the route.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = IslandColors.onSurfaceMuted,
-                )
+                androidx.compose.material3.TextButton(
+                    onClick = { confirmingDelete = true },
+                    modifier = Modifier.align(Alignment.End),
+                ) {
+                    Text(
+                        stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }
@@ -566,7 +742,7 @@ private fun StopRow(
                 )
             } else if (stop.latitude == null) {
                 Text(
-                    text = "No coordinates",
+                    text = stringResource(R.string.detail_no_coordinates),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

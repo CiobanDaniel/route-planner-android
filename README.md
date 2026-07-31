@@ -1,56 +1,71 @@
 # Route Planner — Android
 
-Multi-stop route planning for deliveries. Display name in the app: **Route Planner**.
+Multi-stop route planning for deliveries. Package: `com.danielcioban.routeplanner`.
 
-## Run in Android Studio (emulator)
+Current app version: **0.3.0**
 
-1. **File → Open** this folder: `C:\Users\danie\Desktop\PersonalProjects\route-planner`  
-   (not a copy under `Personal Projects` with a space)
-2. Trust the project if asked, then wait for **Gradle sync** to finish.
-   - If inspections say `minSdkVersion is 1` or `Unresolved class MainActivity`, sync did not finish:  
-     **File → Sync Project with Gradle Files**
-3. Create a virtual device (once): **Tools → Device Manager → Create Device** → Pixel → API 34/35 → Finish.
-4. Toolbar: select run config **app** (or `RoutePlanner.app.main`) and your emulator → green **Run**.
+## Quick start
 
-If Run is disabled: **Run → Edit Configurations → + → Android App**, module `RoutePlanner.app.main`, Launch = Default Activity.
+1. Open this folder in **Android Studio**
+2. Set **Gradle JDK** to **21**  
+   (`Settings → Build Tools → Gradle → Gradle JDK`)  
+   Do **not** use JDK 25 with Gradle 8.14.x
+3. Sync Gradle, then Run on an emulator (API 34+) or device
 
-Gradle JDK should be **jbr-21** (Android Studio’s embedded JDK):  
-**Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK**.
+CLI (JDK 21 on `PATH` / `JAVA_HOME`):
 
-## What this cycle includes
+```bash
+./gradlew assembleDebug testDebugUnitTest lintDebug
+```
 
-- Full-bleed **map background** (Leaflet + OpenStreetMap in a WebView — stable on emulators)
-- **Floating island** UI (rounded panels/buttons with light + dark sculpted shadows)
-- Create / edit / delete routes with ordered stops
-- **Long-press map** to drop a stop; **GPS button** to add current location
-- **Start delivery** mode: next stop, mark done, approx distance/bearing
-- Local Room storage (works offline for route data)
+On Windows: `gradlew.bat …`
 
-Maps, shared multi-user sync, and onboard turn-by-turn come later.
+## Features (0.3)
+
+- Map background (Leaflet + OSM tiles in a WebView)
+- Floating island UI; create / edit / delete routes and stops
+- Long-press map, GPS, or **address search** to add stops
+- Delivery mode with OSRM turn-by-turn + straight-line fallback
+- Open in Google Maps / Waze; share route as text
+- Resume delivery session; reset progress
+- Settings: theme, EN/RO, metric/imperial, keep screen on
+- Local Room storage
 
 ## Stack
 
 | Piece | Choice |
 |--------|--------|
 | UI | Kotlin, Jetpack Compose, Material 3 |
-| Storage | Room (on-device) |
-| Package | `com.danielcioban.routeplanner` |
-| Auth / sync (later) | Firebase Auth + Firestore |
-| Maps (later) | MapLibre + OSM recommended first; Google optional |
+| Storage | Room + DataStore |
+| Maps | Leaflet WebView + OSM-compatible tiles |
+| Routing / geocode | OSRM / Nominatim (dev endpoints) |
+| License | Apache-2.0 |
 
-## Maps & weak-signal notes (planned)
+## Docs for collaborators
 
-Romanian side roads are often missing from map data. The app already lets you **store exact coordinates** for those stops. Later:
-
-- Route on known roads as far as possible, then show **approx. distance/direction** for the last stretch
-- Prefer **local routing** when the network drops (cached tiles / onboard routing engine)
+| Doc | Purpose |
+|-----|---------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Branching, PRs, local checks |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [SECURITY.md](SECURITY.md) | Vulnerability reporting |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | OSM / routing attribution |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | How to cut a release |
+| [docs/MANUAL_SETUP.md](docs/MANUAL_SETUP.md) | Play / Firebase / branch protection (manual) |
+| [docs/PRIVACY_DRAFT.md](docs/PRIVACY_DRAFT.md) | Privacy policy draft |
+| [docs/adr/](docs/adr/) | Architecture decision records |
+| [AGENTS.md](AGENTS.md) | Notes for AI coding assistants |
 
 ## Project layout
 
 ```
 app/src/main/java/com/danielcioban/routeplanner/
   MainActivity.kt
-  data/          # Room + repository
-  ui/            # screens & navigation
-  util/          # geo helpers
+  data/          # Room, settings, routing, geocoding, delivery session
+  ui/            # screens, map, components
+  util/          # geo, share, external navigation
+app/src/main/assets/map.html
 ```
+
+## CI
+
+Pull requests to `main` run GitHub Actions: unit tests, lint, assemble debug.
