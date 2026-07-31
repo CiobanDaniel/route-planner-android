@@ -19,12 +19,14 @@ Gradle JDK should be **jbr-21** (Android Studio’s embedded JDK):
 
 ## What this cycle includes
 
-- Create / edit / delete **routes** with ordered **stops**
-- Per stop: name, address hint, notes, optional **latitude/longitude**
-- Mark stops completed
-- Straight-line distance + compass direction between consecutive stops that have coordinates (for shops on unmapped small roads)
+- Full-bleed **map background** (Leaflet + OpenStreetMap in a WebView — stable on emulators)
+- **Floating island** UI (rounded panels/buttons with light + dark sculpted shadows)
+- Create / edit / delete routes with ordered stops
+- **Long-press map** to drop a stop; **GPS button** to add current location
+- **Start delivery** mode: next stop, mark done, approx distance/bearing
+- Local Room storage (works offline for route data)
 
-Data is stored **locally on the device** (Room), so routes stay available without network. Maps, shared multi-user sync, and offline turn-by-turn come in later cycles.
+Maps, shared multi-user sync, and onboard turn-by-turn come later.
 
 ## Stack
 

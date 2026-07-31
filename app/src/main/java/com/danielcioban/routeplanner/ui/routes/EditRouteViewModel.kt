@@ -24,7 +24,7 @@ data class EditableStop(
 data class EditRouteUiState(
     val routeName: String = "",
     val routeNotes: String = "",
-    val stops: List<EditableStop> = listOf(EditableStop(localId = 1)),
+    val stops: List<EditableStop> = emptyList(),
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -63,7 +63,7 @@ class EditRouteViewModel(
                     longitudeText = stop.longitude?.toString().orEmpty(),
                     isCompleted = stop.isCompleted,
                 )
-            }.ifEmpty { listOf(EditableStop(localId = 1)) }
+            }.ifEmpty { emptyList() }
             nextLocalId = (editable.maxOfOrNull { it.localId } ?: 0) + 1
             _uiState.update {
                 it.copy(
@@ -88,8 +88,7 @@ class EditRouteViewModel(
 
     fun removeStop(localId: Long) {
         _uiState.update { state ->
-            val remaining = state.stops.filterNot { it.localId == localId }
-            state.copy(stops = remaining.ifEmpty { listOf(EditableStop(localId = nextLocalId++)) })
+            state.copy(stops = state.stops.filterNot { it.localId == localId })
         }
     }
 

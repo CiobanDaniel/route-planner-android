@@ -34,9 +34,21 @@ interface RouteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStops(stops: List<StopEntity>)
 
+    @Insert
+    suspend fun insertStop(stop: StopEntity): Long
+
+    @Update
+    suspend fun updateStop(stop: StopEntity)
+
+    @Query("SELECT COALESCE(MAX(position), -1) FROM stops WHERE routeId = :routeId")
+    suspend fun maxStopPosition(routeId: Long): Int
+
     @Query("DELETE FROM stops WHERE routeId = :routeId")
     suspend fun deleteStopsForRoute(routeId: Long)
 
     @Query("UPDATE stops SET isCompleted = :completed WHERE id = :stopId")
     suspend fun setStopCompleted(stopId: Long, completed: Boolean)
+
+    @Query("UPDATE routes SET updatedAtEpochMs = :updatedAt WHERE id = :routeId")
+    suspend fun touchRoute(routeId: Long, updatedAt: Long = System.currentTimeMillis())
 }

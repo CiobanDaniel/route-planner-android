@@ -1,4 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Route Planner</string>
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_close">Close</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add">Add</string>
+    <string name="action_navigate">Navigate</string>
+    <string name="coming_soon">Coming soon</string>
+
+    <string name="menu_title">Menu</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_account">Account</string>
+    <string name="menu_profile">Profile</string>
+    <string name="menu_login">Log in</string>
+    <string name="menu_logout">Log out</string>
+    <string name="menu_open">Open menu</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_units">Distance units</string>
+    <string name="settings_navigation">Navigation</string>
+    <string name="settings_keep_screen_on">Keep screen on</string>
+    <string name="settings_keep_screen_on_hint">Prevents sleep while navigating a delivery</string>
+    <string name="settings_footer_hint">Account and sync options will appear here later.</string>
+
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="language_english">English</string>
+    <string name="language_romanian">Romanian</string>
+    <string name="units_metric">Metric (km, m)</string>
+    <string name="units_imperial">Imperial (mi, ft)</string>
+
+    <string name="home_centered">Centered on your location</string>
+    <string name="home_getting_gps">Getting GPS…</string>
+    <string name="home_allow_location">Allow location to center the map</string>
+    <string name="home_empty_title">No routes yet</string>
+    <string name="home_empty_body">Tap + to start. After creating a route, long-press the map to drop delivery stops.</string>
+    <string name="home_routes">Routes</string>
+
+    <string name="dialog_add_stop_title">Add stop here</string>
+    <string name="dialog_stop_name">Stop name</string>
+    <string name="dialog_delivery_notes">Delivery notes</string>
+    <string name="dialog_delivery_notes_hint">Gate code, phone, leave at door…</string>
+    <string name="dialog_stop_details">Stop details</string>
+    <string name="dialog_name">Name</string>
+    <string name="dialog_maps">Maps</string>
 </resources>

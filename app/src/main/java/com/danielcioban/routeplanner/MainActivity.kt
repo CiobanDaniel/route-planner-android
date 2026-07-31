@@ -1,24 +1,26 @@
 package com.danielcioban.routeplanner
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.danielcioban.routeplanner.data.settings.AppSettings
 import com.danielcioban.routeplanner.ui.RoutePlannerApp
 import com.danielcioban.routeplanner.ui.theme.RoutePlannerTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val settingsRepository = (application as RoutePlannerApplication).settingsRepository
         setContent {
-            RoutePlannerTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    RoutePlannerApp()
-                }
+            val settings by settingsRepository.settings.collectAsStateWithLifecycle(
+                initialValue = AppSettings(),
+            )
+            RoutePlannerTheme(themeMode = settings.themeMode) {
+                RoutePlannerApp(settings = settings)
             }
         }
     }
