@@ -1,6 +1,10 @@
-# Grouped updates → a few PRs per week instead of one per dependency.
-# Existing open Dependabot PRs are unaffected; close them if you want
-# Dependabot to open fresh grouped PRs on the next run.
+# Safer Dependabot: few PRs, no major-version mega-upgrades.
+#
+# Majors (AGP 9, Gradle 9, Kotlin 2.4, OkHttp 5, …) need a dedicated
+# migration PR — not an automatic weekly bump.
+#
+# Close any open Dependabot PR that still tries Gradle/AGP/Kotlin majors;
+# the next run will follow this config.
 version: 2
 updates:
   - package-ecosystem: "gradle"
@@ -8,6 +12,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 2
+    ignore:
+      # Block all major bumps in this ecosystem (patch + minor only).
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       gradle-dependencies:
         patterns:
@@ -18,6 +26,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       github-actions:
         patterns:
