@@ -10,12 +10,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.danielcioban.routeplanner.R
+import com.danielcioban.routeplanner.ui.map.LastKnownMapCenter
 import com.danielcioban.routeplanner.ui.map.LatLng
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
+
+/** Accuracy worse than this (meters) triggers a soft poor-GPS hint. */
+const val PoorGpsAccuracyMeters = 75f
 
 data class UserLocationUi(
     val coordinate: LatLng? = null,
@@ -37,33 +42,47 @@ fun rememberUserLocation(
     val scope = rememberCoroutineScope()
     val permission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
-    var coordinate by remember { mutableStateOf<LatLng?>(null) }
+    var coordinate by remember {
+        mutableStateOf(LastKnownMapCenter.coordinate)
+    }
     var isLoading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
     fun applyLocation(location: android.location.Location) {
         val previousBearing = coordinate?.bearingDegrees
-        coordinate = LatLng(
+        val freshCourse = location.toBearingOrNull()
+        val accuracy = location.accuracy.takeIf { location.hasAccuracy() }
+        val next = LatLng(
             latitude = location.latitude,
             longitude = location.longitude,
-            bearingDegrees = location.toBearingOrNull() ?: previousBearing,
+            bearingDegrees = freshCourse ?: previousBearing,
+            speedMps = location.speed.takeIf { location.hasSpeed() && it >= 0f },
+            accuracyMeters = accuracy,
         )
-        message = null
+        coordinate = next
+        LastKnownMapCenter.update(next)
+        message = when {
+            accuracy != null && accuracy > PoorGpsAccuracyMeters ->
+                context.getString(R.string.msg_poor_gps)
+            else -> null
+        }
     }
 
     fun refresh() {
         scope.launch {
             if (!permission.status.isGranted && !context.hasLocationPermission()) {
-                message = "Location permission needed to center on you"
+                message = context.getString(R.string.msg_location_permission_needed)
                 return@launch
             }
             isLoading = true
+            // Cached fix first so the map can leave the default world view immediately.
+            context.lastKnownLocationOrNull()?.let(::applyLocation)
             val loc = context.currentLocationOrNull()
             isLoading = false
             if (loc != null) {
                 applyLocation(loc)
-            } else {
-                message = "Waiting for GPS… try outdoors or check location is on"
+            } else if (coordinate == null) {
+                message = context.getString(R.string.msg_waiting_gps_hint)
             }
         }
     }

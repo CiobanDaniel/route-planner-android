@@ -27,7 +27,8 @@ import com.danielcioban.routeplanner.ui.theme.IslandPalette
 import com.danielcioban.routeplanner.ui.theme.LocalIslandColors
 
 /**
- * Floating panel above the map: dual light/dark shadows for a sculpted, elevated look.
+ * Floating panel above the map.
+ * Light theme: soft dual shadows. Dark theme: single drop shadow (no white halo).
  */
 @Composable
 fun FloatingIsland(
@@ -39,13 +40,18 @@ fun FloatingIsland(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val palette = LocalIslandColors.current
+    val borderColor = if (palette.useHighlightShadow) {
+        palette.lightShadow.copy(alpha = 0.65f)
+    } else {
+        palette.fieldBorder.copy(alpha = 0.45f)
+    }
     Box(
         modifier = modifier
             .graphicsLayer { clip = false }
-            .sculptedElevation(shape = shape, elevation = elevation, palette = palette)
+            .islandElevation(shape = shape, elevation = elevation, palette = palette)
             .clip(shape)
             .background(containerColor)
-            .border(width = 1.dp, color = palette.lightShadow.copy(alpha = 0.65f), shape = shape)
+            .border(width = 1.dp, color = borderColor, shape = shape)
             .padding(contentPadding),
         content = content,
     )
@@ -77,7 +83,7 @@ fun FloatingCircleButton(
     }
 }
 
-private fun Modifier.sculptedElevation(
+private fun Modifier.islandElevation(
     shape: RoundedCornerShape,
     elevation: Dp,
     palette: IslandPalette,
@@ -89,26 +95,39 @@ private fun Modifier.sculptedElevation(
         val fp = paint.asFrameworkPaint()
         fp.isAntiAlias = true
 
-        fp.setShadowLayer(
-            elev * 0.9f,
-            elev * 0.35f,
-            elev * 0.45f,
-            palette.darkShadow.copy(alpha = 0.40f).toArgb(),
-        )
-        canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
+        if (palette.useHighlightShadow) {
+            fp.setShadowLayer(
+                elev * 0.9f,
+                elev * 0.35f,
+                elev * 0.45f,
+                palette.darkShadow.copy(alpha = 0.40f).toArgb(),
+            )
+            canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
 
-        fp.setShadowLayer(
-            elev * 0.7f,
-            -elev * 0.28f,
-            -elev * 0.32f,
-            palette.lightShadow.copy(alpha = 0.95f).toArgb(),
-        )
-        canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
+            fp.setShadowLayer(
+                elev * 0.7f,
+                -elev * 0.28f,
+                -elev * 0.32f,
+                palette.lightShadow.copy(alpha = 0.95f).toArgb(),
+            )
+            canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
+        } else {
+            // Dark mode: soft drop shadow only — light “sculpt” reads as a foggy halo.
+            fp.setShadowLayer(
+                elev * 1.1f,
+                0f,
+                elev * 0.35f,
+                palette.darkShadow.copy(alpha = 0.55f).toArgb(),
+            )
+            canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
+        }
     }
 
-    drawRoundRect(
-        color = palette.lightShadow.copy(alpha = 0.55f),
-        cornerRadius = CornerRadius(corner, corner),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
-    )
+    if (palette.useHighlightShadow) {
+        drawRoundRect(
+            color = palette.lightShadow.copy(alpha = 0.55f),
+            cornerRadius = CornerRadius(corner, corner),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
+        )
+    }
 }

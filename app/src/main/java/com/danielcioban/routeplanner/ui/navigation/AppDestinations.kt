@@ -5,6 +5,8 @@ object AppDestinations {
     const val ROUTE_DETAIL = "route_detail/{routeId}"
     const val ROUTE_EDIT = "route_edit/{routeId}"
     const val SETTINGS = "settings"
+    const val ABOUT = "about"
+    const val STOP_LIBRARY = "stop_library"
 
     fun routeDetail(routeId: Long) = "route_detail/$routeId"
     fun routeCreate() = "route_edit/-1"

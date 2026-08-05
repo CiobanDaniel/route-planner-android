@@ -29,4 +29,6 @@ data class StopEntity(
     /** WGS84 longitude. Null until the user sets coordinates. */
     val longitude: Double? = null,
     val isCompleted: Boolean = false,
+    /** Optional link to [StopLibraryEntity] (copy-on-add; no hard FK yet). */
+    val libraryStopId: Long? = null,
 )

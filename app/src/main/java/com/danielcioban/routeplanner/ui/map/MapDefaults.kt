@@ -3,9 +3,10 @@ package com.danielcioban.routeplanner.ui.map
 import com.danielcioban.routeplanner.data.local.StopEntity
 
 object MapDefaults {
-    const val defaultLat = 45.7489
-    const val defaultLon = 21.2257
-    const val defaultZoom = 12.0
+    // Fallback only — live maps start world-zoom then fly to LastKnownMapCenter / GPS.
+    const val defaultLat = 20.0
+    const val defaultLon = 0.0
+    const val defaultZoom = 2.0
 }
 
 fun stopsToPointsGeoJson(stops: List<StopEntity>): String {

@@ -32,7 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,10 +46,14 @@ import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.RouteWithStops
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.MapAttributionChip
+import com.danielcioban.routeplanner.ui.location.rememberDeviceBearing
+import com.danielcioban.routeplanner.ui.location.rememberMergedUserFix
 import com.danielcioban.routeplanner.ui.location.rememberUserLocation
 import com.danielcioban.routeplanner.ui.map.MapLayersButton
-import com.danielcioban.routeplanner.ui.map.MapViewMode
+import com.danielcioban.routeplanner.ui.map.MapLayersMenuHost
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
+import com.danielcioban.routeplanner.ui.map.rememberMapChromeState
 import com.danielcioban.routeplanner.ui.menu.AppMenuPanel
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import com.danielcioban.routeplanner.util.ShareRoute
@@ -61,18 +64,24 @@ fun RouteListScreen(
     onCreateRoute: () -> Unit,
     onOpenRoute: (Long) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAbout: () -> Unit,
+    onOpenStopLibrary: () -> Unit,
 ) {
     val routes by viewModel.routes.collectAsStateWithLifecycle()
     val deliverySession by viewModel.deliverySession.collectAsStateWithLifecycle()
-    var recenterToken by remember { mutableIntStateOf(0) }
-    var mapViewMode by remember { mutableStateOf(MapViewMode.MAP) }
-    var driveFollow by remember { mutableStateOf(false) }
+    val chrome = rememberMapChromeState()
     var menuOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val shareChooserTitle = stringResource(R.string.share_route_chooser)
     val userLocation = rememberUserLocation(
         autoRequest = true,
-        highFrequency = driveFollow,
+        highFrequency = chrome.driveFollow,
+    )
+    val compassBearing = rememberDeviceBearing(enabled = chrome.driveFollow)
+    val userFix = rememberMergedUserFix(
+        coordinate = userLocation.coordinate,
+        compassBearing = compassBearing,
+        active = chrome.driveFollow,
     )
     val activeDeliveryRoute = remember(routes, deliverySession.activeRouteId) {
         val id = deliverySession.activeRouteId ?: return@remember null
@@ -83,12 +92,14 @@ fun RouteListScreen(
         RouteMapBackdrop(
             stops = emptyList(),
             fitStops = false,
-            userLocation = userLocation.coordinate,
-            recenterToken = recenterToken,
-            mapViewMode = mapViewMode,
-            driveFollow = driveFollow,
+            userLocation = userFix,
+            recenterToken = chrome.recenterToken,
+            mapViewMode = chrome.mapViewMode,
+            driveFollow = chrome.driveFollow,
         )
 
+        // Absolute chrome: menus/overlays must not live in a height-wrapping Box
+        // or they grow that box and shove the routes list / other islands down.
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -96,98 +107,66 @@ fun RouteListScreen(
                 .navigationBarsPadding()
                 .padding(16.dp),
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FloatingIsland(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(22.dp),
+                    contentPadding = 16.dp,
                 ) {
-                    FloatingIsland(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(22.dp),
-                        contentPadding = 16.dp,
-                    ) {
-                        Column {
-                            Text(
-                                text = stringResource(R.string.app_name),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = IslandColors.onSurface,
-                            )
-                            Text(
-                                text = when {
-                                    userLocation.coordinate != null -> stringResource(R.string.home_centered)
-                                    userLocation.hasPermission -> stringResource(R.string.home_getting_gps)
-                                    else -> stringResource(R.string.home_allow_location)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = IslandColors.onSurfaceMuted,
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    FloatingCircleButton(onClick = { menuOpen = !menuOpen }) {
-                        Icon(
-                            Icons.Default.Menu,
-                            contentDescription = stringResource(R.string.menu_open),
-                            tint = IslandColors.onSurface,
+                    Column {
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = IslandColors.onSurface,
                         )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    MapLayersButton(
-                        selected = mapViewMode,
-                        onSelected = { mode ->
-                            mapViewMode = mode
-                            if (mode == MapViewMode.DRIVING) {
-                                driveFollow = true
-                                recenterToken++
-                            } else {
-                                driveFollow = false
-                            }
-                        },
-                        driveFollow = driveFollow,
-                        onDriveFollowChange = { enabled ->
-                            driveFollow = enabled
-                            if (enabled) {
-                                mapViewMode = MapViewMode.DRIVING
-                                recenterToken++
-                            }
-                        },
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    FloatingCircleButton(
-                        onClick = {
-                            if (!userLocation.hasPermission) {
-                                userLocation.requestPermission()
-                            } else {
-                                userLocation.refresh()
-                                recenterToken++
-                            }
-                        },
-                    ) {
-                        Icon(
-                            Icons.Default.MyLocation,
-                            contentDescription = stringResource(R.string.cd_my_location),
-                            tint = IslandColors.onSurface,
+                        Text(
+                            text = when {
+                                userLocation.message != null -> userLocation.message.orEmpty()
+                                userLocation.coordinate != null -> stringResource(R.string.home_centered)
+                                userLocation.hasPermission -> stringResource(R.string.home_getting_gps)
+                                else -> stringResource(R.string.home_allow_location)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IslandColors.onSurfaceMuted,
                         )
                     }
                 }
-
-                if (menuOpen) {
-                    AppMenuPanel(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 64.dp, end = 56.dp),
-                        onSettings = {
-                            menuOpen = false
-                            onOpenSettings()
-                        },
-                        onAccount = { menuOpen = false },
-                        onProfile = { menuOpen = false },
-                        onLogin = { menuOpen = false },
-                        onLogout = { menuOpen = false },
+                Spacer(modifier = Modifier.width(10.dp))
+                FloatingCircleButton(onClick = { menuOpen = !menuOpen }) {
+                    Icon(
+                        Icons.Default.Menu,
+                        contentDescription = stringResource(R.string.menu_open),
+                        tint = IslandColors.onSurface,
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                MapLayersButton(onClick = chrome::openLayersMenu)
+                Spacer(modifier = Modifier.width(10.dp))
+                FloatingCircleButton(
+                    onClick = {
+                        if (!userLocation.hasPermission) {
+                            userLocation.requestPermission()
+                        } else {
+                            userLocation.refresh()
+                            chrome.bumpRecenter()
+                        }
+                    },
+                ) {
+                    Icon(
+                        Icons.Default.MyLocation,
+                        contentDescription = stringResource(R.string.cd_my_location),
+                        tint = IslandColors.onSurface,
                     )
                 }
             }
+
+            MapAttributionChip(
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -303,6 +282,33 @@ fun RouteListScreen(
                 }
             }
         }
+
+        if (menuOpen) {
+            AppMenuPanel(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 72.dp, end = 16.dp),
+                onSettings = {
+                    menuOpen = false
+                    onOpenSettings()
+                },
+                onAbout = {
+                    menuOpen = false
+                    onOpenAbout()
+                },
+                onStopLibrary = {
+                    menuOpen = false
+                    onOpenStopLibrary()
+                },
+                onAccount = { menuOpen = false },
+                onProfile = { menuOpen = false },
+                onLogin = { menuOpen = false },
+                onLogout = { menuOpen = false },
+            )
+        }
+
+        MapLayersMenuHost(chrome = chrome)
     }
 }
 

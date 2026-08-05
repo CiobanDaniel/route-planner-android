@@ -5,11 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.danielcioban.routeplanner.R
+import com.danielcioban.routeplanner.data.AddFromLibraryResult
 import com.danielcioban.routeplanner.data.RouteRepository
 import com.danielcioban.routeplanner.data.StopDraft
 import com.danielcioban.routeplanner.data.delivery.DeliverySessionStore
 import com.danielcioban.routeplanner.data.local.RouteWithStops
 import com.danielcioban.routeplanner.data.local.StopEntity
+import com.danielcioban.routeplanner.data.local.StopLibraryEntity
 import com.danielcioban.routeplanner.data.routing.DrivingRoute
 import com.danielcioban.routeplanner.data.routing.NavGuidance
 import com.danielcioban.routeplanner.data.routing.NavigationProgress
@@ -64,15 +66,26 @@ class RouteDetailViewModel(
     private val routeId: Long,
     private val deliverySessionStore: DeliverySessionStore,
     private val routingClient: OsrmRoutingClient = OsrmRoutingClient(),
+    private val isOnline: () -> Boolean = { true },
 ) : ViewModel() {
     val route: StateFlow<RouteWithStops?> = repository.observeRoute(routeId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val stopLibrary: StateFlow<List<StopLibraryEntity>> = repository.observeStopLibrary()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _deliveryActive = MutableStateFlow(false)
     val deliveryActive: StateFlow<Boolean> = _deliveryActive.asStateFlow()
 
     private val _pendingPin = MutableStateFlow<PendingStopPin?>(null)
     val pendingPin: StateFlow<PendingStopPin?> = _pendingPin.asStateFlow()
+
+    private val _noticeMessageRes = MutableStateFlow<Int?>(null)
+    val noticeMessageRes: StateFlow<Int?> = _noticeMessageRes.asStateFlow()
+
+    fun consumeNotice() {
+        _noticeMessageRes.value = null
+    }
 
     private val _selectedStopId = MutableStateFlow<Long?>(null)
     val selectedStopId: StateFlow<Long?> = _selectedStopId.asStateFlow()
@@ -145,11 +158,21 @@ class RouteDetailViewModel(
         _pendingPin.value = null
     }
 
-    fun confirmPendingStop(name: String, notes: String = "") {
+    fun confirmPendingStop(name: String, notes: String = "", alsoSaveToLibrary: Boolean = false) {
         val pin = _pendingPin.value ?: return
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         viewModelScope.launch {
+            var libraryId: Long? = null
+            if (alsoSaveToLibrary) {
+                libraryId = repository.upsertLibraryStop(
+                    name = trimmed,
+                    addressHint = pin.addressHint.trim(),
+                    notes = notes.trim(),
+                    latitude = pin.latitude,
+                    longitude = pin.longitude,
+                )
+            }
             repository.addStop(
                 routeId,
                 StopDraft(
@@ -158,9 +181,54 @@ class RouteDetailViewModel(
                     addressHint = pin.addressHint.trim(),
                     latitude = pin.latitude,
                     longitude = pin.longitude,
+                    libraryStopId = libraryId,
                 ),
             )
             _pendingPin.value = null
+        }
+    }
+
+    fun addStopFromLibrary(libraryStopId: Long) {
+        viewModelScope.launch {
+            when (val result = repository.addStopFromLibrary(routeId, libraryStopId)) {
+                is AddFromLibraryResult.Added -> {
+                    _selectedStopId.value = result.stopId
+                    _noticeMessageRes.value = R.string.library_added_to_route
+                }
+                is AddFromLibraryResult.AlreadyOnRoute -> {
+                    _selectedStopId.value = result.stopId
+                    _noticeMessageRes.value = R.string.library_already_on_route
+                }
+                AddFromLibraryResult.LibraryMissing -> {
+                    _noticeMessageRes.value = R.string.library_missing
+                }
+            }
+        }
+    }
+
+    fun saveSelectedStopToLibrary(stopId: Long) {
+        viewModelScope.launch {
+            val stop = route.value?.orderedStops?.firstOrNull { it.id == stopId } ?: return@launch
+            val libId = repository.saveRouteStopToLibrary(stop) ?: return@launch
+            if (stop.libraryStopId != libId) {
+                repository.updateStop(stop.copy(libraryStopId = libId))
+            }
+            _noticeMessageRes.value = if (stop.libraryStopId != null) {
+                R.string.library_updated_entry
+            } else {
+                R.string.library_saved_entry
+            }
+        }
+    }
+
+    fun refreshStopFromLibrary(stopId: Long) {
+        viewModelScope.launch {
+            val ok = repository.updateStopFromLibrary(stopId)
+            _noticeMessageRes.value = if (ok) {
+                R.string.library_refreshed_from
+            } else {
+                R.string.library_refresh_failed
+            }
         }
     }
 
@@ -210,6 +278,47 @@ class RouteDetailViewModel(
     fun setStopCompleted(stopId: Long, completed: Boolean) {
         viewModelScope.launch {
             repository.setStopCompleted(stopId, completed)
+        }
+    }
+
+    fun moveStopUp(stopId: Long) {
+        viewModelScope.launch {
+            repository.moveStop(routeId, stopId, delta = -1)
+        }
+    }
+
+    fun moveStopDown(stopId: Long) {
+        viewModelScope.launch {
+            repository.moveStop(routeId, stopId, delta = 1)
+        }
+    }
+
+    /**
+     * Mark every unfinished stop before [stopId] as done, then navigate to that stop.
+     */
+    fun jumpToStop(stopId: Long, userLocation: LatLng? = lastUserFix) {
+        val stops = route.value?.orderedStops.orEmpty()
+        val target = stops.firstOrNull { it.id == stopId } ?: return
+        if (target.isCompleted) return
+        viewModelScope.launch {
+            for (stop in stops) {
+                if (stop.id == target.id) break
+                if (!stop.isCompleted) {
+                    repository.setStopCompleted(stop.id, true)
+                }
+            }
+            val fix = userLocation ?: lastUserFix
+            if (fix != null) {
+                startNavigationToStop(target, fix)
+            } else {
+                _deliveryActive.value = true
+                deliverySessionStore.setActiveRoute(routeId)
+                _navigation.value = NavigationUiState(
+                    phase = NavigationPhase.Error,
+                    targetStopId = target.id,
+                    errorMessageRes = R.string.nav_error_waiting_gps,
+                )
+            }
         }
     }
 
@@ -349,12 +458,13 @@ class RouteDetailViewModel(
         }
         routeJob = viewModelScope.launch {
             val result = routingClient.routeDriving(from, to)
+            val usedFallback = result.isFailure
             val driving = result.getOrElse {
                 DrivingRoute.straightLine(
                     from = from,
                     to = to,
-                    headInstruction = "Head toward destination",
-                    arriveInstruction = "You have arrived",
+                    headInstruction = "",
+                    arriveInstruction = "",
                 )
             }
             lastRecalcAtMs = System.currentTimeMillis()
@@ -366,7 +476,12 @@ class RouteDetailViewModel(
                     targetStopId = targetStopId,
                     route = driving,
                     guidance = guidance,
-                    errorMessageRes = null,
+                    // Soft hint when we fell back — distinguish offline vs roads unavailable.
+                    errorMessageRes = when {
+                        !usedFallback -> null
+                        !isOnline() -> R.string.nav_approx_offline
+                        else -> R.string.nav_approx_roads_unavailable
+                    },
                     navLineJson = driving.toLineGeoJson(),
                     navFitToken = fitToken,
                 )
@@ -417,10 +532,16 @@ class RouteDetailViewModel(
         private val repository: RouteRepository,
         private val routeId: Long,
         private val deliverySessionStore: DeliverySessionStore,
+        private val isOnline: () -> Boolean = { true },
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return RouteDetailViewModel(repository, routeId, deliverySessionStore) as T
+            return RouteDetailViewModel(
+                repository = repository,
+                routeId = routeId,
+                deliverySessionStore = deliverySessionStore,
+                isOnline = isOnline,
+            ) as T
         }
     }
 }

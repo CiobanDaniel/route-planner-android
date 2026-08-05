@@ -20,7 +20,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -28,7 +31,9 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,14 +59,16 @@ import com.danielcioban.routeplanner.data.settings.AppSettings
 import com.danielcioban.routeplanner.ui.components.AddressSearchDialog
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
-import com.danielcioban.routeplanner.ui.components.IslandDialog
-import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
+import com.danielcioban.routeplanner.ui.components.MapAttributionChip
+import com.danielcioban.routeplanner.ui.library.StopLibraryPickerDialog
 import com.danielcioban.routeplanner.ui.location.rememberDeviceBearing
+import com.danielcioban.routeplanner.ui.location.rememberMergedUserFix
 import com.danielcioban.routeplanner.ui.location.rememberUserLocation
 import com.danielcioban.routeplanner.ui.map.LatLng
 import com.danielcioban.routeplanner.ui.map.MapLayersButton
-import com.danielcioban.routeplanner.ui.map.MapViewMode
+import com.danielcioban.routeplanner.ui.map.MapLayersMenuHost
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
+import com.danielcioban.routeplanner.ui.map.rememberMapChromeState
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import com.danielcioban.routeplanner.util.ExternalNavigation
 import com.danielcioban.routeplanner.util.GeoUtils
@@ -72,6 +79,7 @@ fun RouteDetailScreen(
     viewModel: RouteDetailViewModel,
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
+    onOpenStopLibrary: () -> Unit = {},
     settings: AppSettings = AppSettings(),
 ) {
     val routeWithStops by viewModel.route.collectAsStateWithLifecycle()
@@ -79,20 +87,23 @@ fun RouteDetailScreen(
     val pendingPin by viewModel.pendingPin.collectAsStateWithLifecycle()
     val selectedStopId by viewModel.selectedStopId.collectAsStateWithLifecycle()
     val navigation by viewModel.navigation.collectAsStateWithLifecycle()
-    var recenterToken by remember { mutableIntStateOf(0) }
+    val libraryStops by viewModel.stopLibrary.collectAsStateWithLifecycle()
+    val noticeMessageRes by viewModel.noticeMessageRes.collectAsStateWithLifecycle()
+    val chrome = rememberMapChromeState()
     var focusToken by remember { mutableIntStateOf(0) }
     var focusTarget by remember { mutableStateOf<LatLng?>(null) }
-    var mapViewMode by remember { mutableStateOf(MapViewMode.MAP) }
-    var driveFollow by remember { mutableStateOf(false) }
     var followPaused by remember { mutableStateOf(false) }
     var showAddressSearch by remember { mutableStateOf(false) }
     var showEndDeliveryDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showStopQueue by remember { mutableStateOf(false) }
+    var showLibraryPicker by remember { mutableStateOf(false) }
+    var saveNewStopToLibrary by remember { mutableStateOf(false) }
     val shareChooserTitle = stringResource(R.string.share_route_chooser)
     val inAppNavigating = navigation.phase == NavigationPhase.Navigating ||
         navigation.phase == NavigationPhase.LoadingRoute ||
         navigation.phase == NavigationPhase.Arrived
-    val navigating = driveFollow || deliveryActive || inAppNavigating
+    val navigating = chrome.driveFollow || deliveryActive || inAppNavigating
     val view = LocalView.current
     DisposableEffect(settings.keepScreenOnDuringNav, navigating) {
         val keep = settings.keepScreenOnDuringNav && navigating
@@ -104,17 +115,29 @@ fun RouteDetailScreen(
         highFrequency = navigating,
     )
     val compassBearing = rememberDeviceBearing(enabled = navigating)
-    val userFix = remember(userLocation.coordinate, compassBearing) {
-        val base = userLocation.coordinate ?: return@remember null
-        // Rotation-vector azimuth is mirrored vs map bearing for heading-up.
-        val compassForMap = compassBearing?.let { ((360f - it) % 360f) }
-        base.copy(bearingDegrees = base.bearingDegrees ?: compassForMap)
-    }
+    val userFix = rememberMergedUserFix(
+        coordinate = userLocation.coordinate,
+        compassBearing = compassBearing,
+        active = navigating,
+    )
 
     var newStopName by remember { mutableStateOf("") }
     var newStopNotes by remember { mutableStateOf("") }
     var locationMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+
+    LaunchedEffect(noticeMessageRes) {
+        val res = noticeMessageRes ?: return@LaunchedEffect
+        locationMessage = context.getString(res)
+        viewModel.consumeNotice()
+    }
+
+    LaunchedEffect(userLocation.message) {
+        val gpsMessage = userLocation.message
+        if (gpsMessage != null) {
+            locationMessage = gpsMessage
+        }
+    }
 
     LaunchedEffect(userFix, navigation.phase, deliveryActive) {
         val fix = userFix ?: return@LaunchedEffect
@@ -128,6 +151,13 @@ fun RouteDetailScreen(
     val selectedStop = stops.firstOrNull { it.id == selectedStopId }
     val progress = viewModel.deliveryProgress()
     val hasPinnedStops = stops.any { it.latitude != null && it.longitude != null }
+    var didCenterEmptyRoute by remember(routeWithStops?.route?.id) { mutableStateOf(false) }
+    LaunchedEffect(userFix, hasPinnedStops, navigating) {
+        if (!hasPinnedStops && userFix != null && !navigating && !didCenterEmptyRoute) {
+            didCenterEmptyRoute = true
+            chrome.bumpRecenter()
+        }
+    }
     val distanceFromYou = remember(userFix, progress.nextStop, settings.distanceUnit) {
         val user = userFix
         val next = progress.nextStop
@@ -185,17 +215,15 @@ fun RouteDetailScreen(
             return
         }
         locationMessage = null
-        driveFollow = true
         followPaused = false
-        mapViewMode = MapViewMode.DRIVING
-        recenterToken++
+        chrome.enterDrivingFollow()
         viewModel.startNavigationToNext(fix)
     }
 
     fun recenterOnUser() {
         followPaused = false
-        driveFollow = true
-        recenterToken++
+        chrome.driveFollow = true
+        chrome.bumpRecenter()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -203,8 +231,8 @@ fun RouteDetailScreen(
             stops = stops,
             fitStops = hasPinnedStops && !navigating,
             userLocation = userFix,
-            recenterToken = recenterToken,
-            mapViewMode = mapViewMode,
+            recenterToken = chrome.recenterToken,
+            mapViewMode = chrome.mapViewMode,
             driveFollow = navigating,
             navRouteLineJson = navigation.navLineJson,
             navRouteFitToken = navigation.navFitToken,
@@ -259,6 +287,7 @@ fun RouteDetailScreen(
                                         R.string.detail_delivery_active,
                                         progress.remaining,
                                     )
+                                    stops.isEmpty() -> stringResource(R.string.detail_empty_subtitle)
                                     else -> stringResource(R.string.detail_long_press_hint)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
@@ -292,32 +321,21 @@ fun RouteDetailScreen(
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(horizontalAlignment = Alignment.End) {
-                    MapLayersButton(
-                        selected = mapViewMode,
-                        onSelected = { mode ->
-                            mapViewMode = mode
-                            if (mode == MapViewMode.DRIVING) {
-                                driveFollow = true
-                                recenterToken++
-                            } else {
-                                driveFollow = false
-                            }
-                        },
-                        driveFollow = navigating,
-                        onDriveFollowChange = { enabled ->
-                            driveFollow = enabled
-                            if (enabled) {
-                                mapViewMode = MapViewMode.DRIVING
-                                recenterToken++
-                            }
-                        },
-                    )
+                    MapLayersButton(onClick = chrome::openLayersMenu)
                     Spacer(modifier = Modifier.height(10.dp))
                     if (!deliveryActive) {
                         FloatingCircleButton(onClick = { showAddressSearch = true }) {
                             Icon(
                                 Icons.Default.Search,
                                 contentDescription = stringResource(R.string.cd_search_place),
+                                tint = IslandColors.onSurface,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        FloatingCircleButton(onClick = { showLibraryPicker = true }) {
+                            Icon(
+                                Icons.Default.BookmarkBorder,
+                                contentDescription = stringResource(R.string.cd_add_from_library),
                                 tint = IslandColors.onSurface,
                             )
                         }
@@ -341,7 +359,7 @@ fun RouteDetailScreen(
                                         loc.longitude,
                                     )
                                     locationMessage = null
-                                    recenterToken++
+                                    chrome.bumpRecenter()
                                 } else {
                                     userLocation.refresh()
                                     locationMessage = context.getString(R.string.msg_waiting_gps)
@@ -360,17 +378,8 @@ fun RouteDetailScreen(
                 }
             }
 
-            if (locationMessage != null) {
-                Spacer(modifier = Modifier.heightIn(min = 8.dp))
-                FloatingIsland(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = 12.dp,
-                ) {
-                    Text(locationMessage.orEmpty(), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-
+            // Keep chrome height stable — messages float over the map, they don't
+            // insert into the column and shove the stop list / HUD.
             Spacer(modifier = Modifier.weight(1f))
 
             if (deliveryActive) {
@@ -385,7 +394,51 @@ fun RouteDetailScreen(
                     onEndDelivery = { showEndDeliveryDialog = true },
                     onRetryRoute = { beginInAppNavigation() },
                     onOpenExternalMaps = { openExternalMaps(it) },
+                    onOpenQueue = { showStopQueue = true },
                 )
+            } else if (stops.isEmpty()) {
+                FloatingIsland(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    contentPadding = 18.dp,
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = stringResource(R.string.detail_empty_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = IslandColors.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.detail_empty_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = IslandColors.onSurfaceMuted,
+                        )
+                        Button(
+                            onClick = { showAddressSearch = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Icon(Icons.Default.Search, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.detail_empty_search))
+                        }
+                        OutlinedButton(
+                            onClick = { showLibraryPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Icon(Icons.Default.BookmarkBorder, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.library_pick_title))
+                        }
+                        Text(
+                            text = stringResource(R.string.detail_empty_long_press),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IslandColors.onSurfaceMuted,
+                        )
+                    }
+                }
             } else {
                 FloatingIsland(
                     modifier = Modifier
@@ -417,7 +470,14 @@ fun RouteDetailScreen(
                             }
                             Button(
                                 onClick = {
-                                    viewModel.setDeliveryActive(true)
+                                    val unpinned = stops.count { !it.isCompleted && (it.latitude == null || it.longitude == null) }
+                                    if (unpinned > 0) {
+                                        locationMessage = context.getString(
+                                            R.string.msg_stops_missing_pins,
+                                            unpinned,
+                                        )
+                                    }
+                                    // Only beginInAppNavigation activates delivery (after GPS is ready).
                                     beginInAppNavigation()
                                 },
                                 shape = RoundedCornerShape(16.dp),
@@ -438,8 +498,13 @@ fun RouteDetailScreen(
                                     stop = stop,
                                     previous = previous,
                                     selected = stop.id == selectedStopId,
+                                    distanceUnit = settings.distanceUnit,
+                                    canMoveUp = index > 0,
+                                    canMoveDown = index < stops.lastIndex,
                                     onClick = { viewModel.selectStop(stop.id) },
                                     onCompletedChange = { viewModel.setStopCompleted(stop.id, it) },
+                                    onMoveUp = { viewModel.moveStopUp(stop.id) },
+                                    onMoveDown = { viewModel.moveStopDown(stop.id) },
                                 )
                             }
                         }
@@ -447,249 +512,171 @@ fun RouteDetailScreen(
                 }
             }
         }
-    }
 
-    if (showEndDeliveryDialog) {
-        IslandDialog(
-            onDismissRequest = { showEndDeliveryDialog = false },
-            title = stringResource(R.string.dialog_end_delivery_title),
-            confirmLabel = stringResource(R.string.nav_end_delivery),
-            onConfirm = {
-                showEndDeliveryDialog = false
-                viewModel.endDelivery(resetCompletions = false)
-                driveFollow = false
-                mapViewMode = MapViewMode.MAP
-            },
-            dismissLabel = stringResource(R.string.action_cancel),
-        ) {
-            Text(
-                text = stringResource(R.string.dialog_end_delivery_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = IslandColors.onSurfaceMuted,
+        MapAttributionChip(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 16.dp, top = 88.dp),
+        )
+
+        if (locationMessage != null) {
+            FloatingIsland(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 120.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = 12.dp,
+            ) {
+                Text(locationMessage.orEmpty(), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        MapLayersMenuHost(chrome = chrome, followChecked = navigating)
+
+        if (showStopQueue && deliveryActive) {
+            val remaining = stops.filter { !it.isCompleted }
+            val currentId = progress.nextStop?.id ?: navigation.targetStopId
+            DeliveryStopQueueSheet(
+                remainingStops = remaining,
+                currentStopId = currentId,
+                onDismiss = { showStopQueue = false },
+                onJumpTo = { stop ->
+                    viewModel.jumpToStop(stop.id, userFix)
+                    chrome.enterDrivingFollow()
+                },
+                onSkipCurrent = {
+                    viewModel.completeNextStop(userFix)
+                },
             )
-            TextButton(
-                onClick = {
+        }
+
+        if (showEndDeliveryDialog) {
+            EndDeliveryDialog(
+                onDismiss = { showEndDeliveryDialog = false },
+                onEndKeepProgress = {
+                    showEndDeliveryDialog = false
+                    viewModel.endDelivery(resetCompletions = false)
+                    chrome.exitDrivingFollow()
+                },
+                onEndAndReset = {
                     showEndDeliveryDialog = false
                     viewModel.endDelivery(resetCompletions = true)
-                    driveFollow = false
-                    mapViewMode = MapViewMode.MAP
+                    chrome.exitDrivingFollow()
                 },
-                modifier = Modifier.align(Alignment.End),
-            ) {
-                Text(
-                    stringResource(R.string.dialog_end_and_reset),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-    }
-
-    if (showResetDialog) {
-        IslandDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = stringResource(R.string.dialog_reset_progress_title),
-            confirmLabel = stringResource(R.string.action_reset_progress),
-            onConfirm = {
-                showResetDialog = false
-                viewModel.resetCompletions()
-            },
-            dismissLabel = stringResource(R.string.action_cancel),
-        ) {
-            Text(
-                text = stringResource(R.string.dialog_reset_progress_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = IslandColors.onSurfaceMuted,
             )
         }
-    }
 
-    if (showAddressSearch && !deliveryActive) {
-        AddressSearchDialog(
-            onDismissRequest = { showAddressSearch = false },
-            near = userFix,
-            onPlaceSelected = { place ->
-                showAddressSearch = false
-                focusTarget = place.coordinate
-                focusToken++
-                newStopName = place.shortName
-                newStopNotes = ""
-                viewModel.beginAddStopAt(
-                    latitude = place.latitude,
-                    longitude = place.longitude,
-                    suggestedName = place.shortName,
-                    addressHint = place.displayName,
-                )
-            },
-        )
-    }
-
-    if (pendingPin != null) {
-        LaunchedEffect(pendingPin!!.latitude, pendingPin!!.longitude, pendingPin!!.suggestedName) {
-            if (newStopName.isBlank() && pendingPin!!.suggestedName.isNotBlank()) {
-                newStopName = pendingPin!!.suggestedName
-            }
-        }
-        IslandDialog(
-            onDismissRequest = {
-                viewModel.cancelPendingPin()
-                newStopName = ""
-                newStopNotes = ""
-            },
-            title = stringResource(R.string.dialog_add_stop_title),
-            confirmLabel = stringResource(R.string.action_add),
-            onConfirm = {
-                viewModel.confirmPendingStop(newStopName, newStopNotes)
-                newStopName = ""
-                newStopNotes = ""
-            },
-            dismissLabel = stringResource(R.string.action_cancel),
-        ) {
-            Text(
-                text = "${"%.5f".format(pendingPin!!.latitude)}, ${"%.5f".format(pendingPin!!.longitude)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = IslandColors.onSurfaceMuted,
-            )
-            if (pendingPin!!.addressHint.isNotBlank()) {
-                Text(
-                    text = pendingPin!!.addressHint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = IslandColors.onSurfaceMuted,
-                )
-            }
-            SoftOutlinedTextField(
-                value = newStopName,
-                onValueChange = { newStopName = it },
-                label = stringResource(R.string.dialog_stop_name),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            SoftOutlinedTextField(
-                value = newStopNotes,
-                onValueChange = { newStopNotes = it },
-                label = stringResource(R.string.dialog_delivery_notes),
-                placeholder = stringResource(R.string.dialog_delivery_notes_hint),
-                singleLine = false,
-                minLines = 2,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-
-    if (selectedStop != null && !deliveryActive) {
-        var editName by remember(selectedStop.id) { mutableStateOf(selectedStop.name) }
-        var editNotes by remember(selectedStop.id) { mutableStateOf(selectedStop.notes) }
-        var confirmingDelete by remember(selectedStop.id) { mutableStateOf(false) }
-
-        if (confirmingDelete) {
-            IslandDialog(
-                onDismissRequest = { confirmingDelete = false },
-                title = stringResource(R.string.dialog_delete_stop_title),
-                confirmLabel = stringResource(R.string.action_delete),
+        if (showResetDialog) {
+            ResetProgressDialog(
+                onDismiss = { showResetDialog = false },
                 onConfirm = {
-                    viewModel.deleteStop(selectedStop.id)
-                    confirmingDelete = false
+                    showResetDialog = false
+                    viewModel.resetCompletions()
                 },
-                dismissLabel = stringResource(R.string.action_cancel),
-                onDismissButton = { confirmingDelete = false },
-            ) {
-                Text(
-                    text = stringResource(R.string.dialog_delete_stop_body, selectedStop.name),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = IslandColors.onSurfaceMuted,
-                )
-            }
-        } else {
-            IslandDialog(
-                onDismissRequest = { viewModel.selectStop(null) },
-                title = stringResource(R.string.dialog_stop_details),
-                confirmLabel = stringResource(R.string.action_save),
+            )
+        }
+
+        if (showLibraryPicker && !deliveryActive) {
+            StopLibraryPickerDialog(
+                stops = libraryStops,
+                onDismiss = { showLibraryPicker = false },
+                onPick = { stop -> viewModel.addStopFromLibrary(stop.id) },
+                onManageLibrary = onOpenStopLibrary,
+                alreadyOnRouteLibraryIds = stops.mapNotNull { it.libraryStopId }.toSet(),
+            )
+        }
+
+        if (showAddressSearch && !deliveryActive) {
+            AddressSearchDialog(
+                onDismissRequest = { showAddressSearch = false },
+                near = userFix,
+                onPlaceSelected = { place ->
+                    showAddressSearch = false
+                    focusTarget = place.coordinate
+                    focusToken++
+                    newStopName = place.shortName
+                    newStopNotes = ""
+                    viewModel.beginAddStopAt(
+                        latitude = place.latitude,
+                        longitude = place.longitude,
+                        suggestedName = place.shortName,
+                        addressHint = place.displayName,
+                    )
+                },
+            )
+        }
+
+        pendingPin?.let { pin ->
+            AddStopFromPinDialog(
+                pin = pin,
+                name = newStopName,
+                onNameChange = { newStopName = it },
+                notes = newStopNotes,
+                onNotesChange = { newStopNotes = it },
+                alsoSaveToLibrary = saveNewStopToLibrary,
+                onAlsoSaveToLibraryChange = { saveNewStopToLibrary = it },
+                onDismiss = {
+                    viewModel.cancelPendingPin()
+                    newStopName = ""
+                    newStopNotes = ""
+                },
                 onConfirm = {
+                    viewModel.confirmPendingStop(
+                        name = newStopName,
+                        notes = newStopNotes,
+                        alsoSaveToLibrary = saveNewStopToLibrary,
+                    )
+                    newStopName = ""
+                    newStopNotes = ""
+                    saveNewStopToLibrary = false
+                },
+            )
+        }
+
+        if (selectedStop != null && !deliveryActive) {
+            SelectedStopDialogs(
+                stop = selectedStop,
+                onDismiss = { viewModel.selectStop(null) },
+                onSave = { name, notes ->
                     viewModel.updateStopDetails(
                         stopId = selectedStop.id,
-                        name = editName,
-                        notes = editNotes,
+                        name = name,
+                        notes = notes,
                         addressHint = selectedStop.addressHint,
                     )
                     viewModel.selectStop(null)
                 },
-                dismissLabel = stringResource(R.string.action_close),
-            ) {
-                SoftOutlinedTextField(
-                    value = editName,
-                    onValueChange = { editName = it },
-                    label = stringResource(R.string.dialog_name),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                SoftOutlinedTextField(
-                    value = editNotes,
-                    onValueChange = { editNotes = it },
-                    label = stringResource(R.string.dialog_delivery_notes),
-                    placeholder = stringResource(R.string.dialog_delivery_notes_hint),
-                    singleLine = false,
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (selectedStop.latitude != null && selectedStop.longitude != null) {
-                    Text(
-                        stringResource(
-                            R.string.dialog_pinned_coords,
-                            selectedStop.latitude!!,
-                            selectedStop.longitude!!,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = IslandColors.onSurfaceMuted,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                val stop = selectedStop
-                                viewModel.selectStop(null)
-                                val fix = userFix
-                                if (!userLocation.hasPermission) {
-                                    userLocation.requestPermission()
-                                    locationMessage = context.getString(R.string.msg_allow_location_nav)
-                                } else if (fix == null) {
-                                    userLocation.refresh()
-                                    locationMessage = context.getString(R.string.msg_waiting_gps)
-                                } else {
-                                    locationMessage = null
-                                    driveFollow = true
-                                    followPaused = false
-                                    mapViewMode = MapViewMode.DRIVING
-                                    recenterToken++
-                                    viewModel.startNavigationToStop(stop, fix)
-                                }
-                            },
-                        ) {
-                            Text(stringResource(R.string.action_navigate))
-                        }
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                openExternalMaps(selectedStop)
-                                viewModel.selectStop(null)
-                            },
-                        ) {
-                            Text(stringResource(R.string.dialog_maps))
-                        }
+                onDelete = { viewModel.deleteStop(selectedStop.id) },
+                onSaveToLibrary = { viewModel.saveSelectedStopToLibrary(selectedStop.id) },
+                onRefreshFromLibrary = {
+                    viewModel.refreshStopFromLibrary(selectedStop.id)
+                },
+                onNavigate = {
+                    val stop = selectedStop
+                    viewModel.selectStop(null)
+                    val fix = userFix
+                    if (!userLocation.hasPermission) {
+                        userLocation.requestPermission()
+                        locationMessage = context.getString(R.string.msg_allow_location_nav)
+                    } else if (fix == null) {
+                        userLocation.refresh()
+                        locationMessage = context.getString(R.string.msg_waiting_gps)
+                    } else {
+                        locationMessage = null
+                        followPaused = false
+                        chrome.enterDrivingFollow()
+                        viewModel.startNavigationToStop(stop, fix)
                     }
-                } else {
-                    Text(
-                        stringResource(R.string.dialog_no_map_pin),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = IslandColors.onSurfaceMuted,
-                    )
-                }
-                androidx.compose.material3.TextButton(
-                    onClick = { confirmingDelete = true },
-                    modifier = Modifier.align(Alignment.End),
-                ) {
-                    Text(
-                        stringResource(R.string.action_delete),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
+                },
+                onOpenExternalMaps = {
+                    openExternalMaps(selectedStop)
+                    viewModel.selectStop(null)
+                },
+            )
         }
     }
 }
@@ -700,9 +687,15 @@ private fun StopRow(
     stop: StopEntity,
     previous: StopEntity?,
     selected: Boolean,
+    distanceUnit: com.danielcioban.routeplanner.data.settings.DistanceUnit,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     onClick: () -> Unit,
     onCompletedChange: (Boolean) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
 ) {
+    val hasPin = stop.latitude != null && stop.longitude != null
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -717,6 +710,22 @@ private fun StopRow(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             )
+            if (stop.libraryStopId != null) {
+                Text(
+                    text = stringResource(R.string.library_linked_badge),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (stop.addressHint.isNotBlank()) {
+                Text(
+                    text = stop.addressHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = IslandColors.onSurfaceMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (stop.notes.isNotBlank()) {
                 Text(
                     text = stop.notes,
@@ -726,25 +735,50 @@ private fun StopRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (stop.latitude != null && stop.longitude != null &&
-                previous?.latitude != null && previous.longitude != null
-            ) {
-                val meters = GeoUtils.distanceMeters(
-                    previous.latitude!!,
-                    previous.longitude!!,
-                    stop.latitude!!,
-                    stop.longitude!!,
+            when {
+                hasPin && previous?.latitude != null && previous.longitude != null -> {
+                    val meters = GeoUtils.distanceMeters(
+                        previous.latitude!!,
+                        previous.longitude!!,
+                        stop.latitude!!,
+                        stop.longitude!!,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.detail_from_previous,
+                            GeoUtils.formatDistance(meters, distanceUnit),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                hasPin -> {
+                    Text(
+                        text = stringResource(R.string.edit_pinned),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                else -> {
+                    Text(
+                        text = stringResource(R.string.detail_no_coordinates),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+        Column {
+            IconButton(onClick = onMoveUp, enabled = canMoveUp) {
+                Icon(
+                    Icons.Default.KeyboardArrowUp,
+                    contentDescription = stringResource(R.string.cd_move_up),
                 )
-                Text(
-                    text = GeoUtils.formatDistance(meters) + " from previous",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else if (stop.latitude == null) {
-                Text(
-                    text = stringResource(R.string.detail_no_coordinates),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            }
+            IconButton(onClick = onMoveDown, enabled = canMoveDown) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.cd_move_down),
                 )
             }
         }

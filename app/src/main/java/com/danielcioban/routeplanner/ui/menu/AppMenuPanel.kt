@@ -14,7 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -34,6 +36,8 @@ import com.danielcioban.routeplanner.ui.theme.IslandColors
 @Composable
 fun AppMenuPanel(
     onSettings: () -> Unit,
+    onAbout: () -> Unit,
+    onStopLibrary: () -> Unit,
     onAccount: () -> Unit,
     onProfile: () -> Unit,
     onLogin: () -> Unit,
@@ -57,6 +61,16 @@ fun AppMenuPanel(
                 icon = Icons.Default.Settings,
                 label = stringResource(R.string.menu_settings),
                 onClick = onSettings,
+            )
+            MenuRow(
+                icon = Icons.Default.Place,
+                label = stringResource(R.string.menu_stop_library),
+                onClick = onStopLibrary,
+            )
+            MenuRow(
+                icon = Icons.Default.Info,
+                label = stringResource(R.string.menu_about),
+                onClick = onAbout,
             )
             MenuRow(
                 icon = Icons.Default.AccountCircle,

@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -32,14 +33,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +52,7 @@ import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
+import com.danielcioban.routeplanner.ui.library.StopLibraryPickerDialog
 import com.danielcioban.routeplanner.ui.location.rememberUserLocation
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.theme.IslandColors
@@ -58,10 +63,15 @@ fun EditRouteScreen(
     isNew: Boolean,
     onBack: () -> Unit,
     onSaved: (Long) -> Unit,
+    onOpenStopLibrary: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val libraryStops by viewModel.stopLibrary.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val userLocation = rememberUserLocation(autoRequest = true)
     var recenterToken by remember { mutableIntStateOf(0) }
+    var showLibraryPicker by remember { mutableStateOf(false) }
+    val showStopsEditor = !isNew || state.stops.isNotEmpty()
 
     val previewStops = remember(state.stops) {
         state.stops.mapIndexedNotNull { index, stop ->
@@ -72,9 +82,12 @@ fun EditRouteScreen(
                 id = stop.localId,
                 routeId = 0,
                 position = index,
-                name = stop.name.ifBlank { "Stop ${index + 1}" },
+                name = stop.name.ifBlank {
+                    context.getString(R.string.edit_stop_default_name, index + 1)
+                },
                 latitude = lat,
                 longitude = lon,
+                libraryStopId = stop.libraryStopId,
             )
         }
     }
@@ -109,6 +122,14 @@ fun EditRouteScreen(
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
+                FloatingCircleButton(onClick = { showLibraryPicker = true }) {
+                    Icon(
+                        Icons.Default.BookmarkBorder,
+                        contentDescription = stringResource(R.string.cd_add_from_library),
+                        tint = IslandColors.onSurface,
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
                 FloatingCircleButton(
                     onClick = {
                         if (!userLocation.hasPermission) {
@@ -182,23 +203,32 @@ fun EditRouteScreen(
                                 singleLine = false,
                             )
                         }
-                        if (!isNew) {
-                            item {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Text(
                                     text = stringResource(R.string.edit_stops),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.weight(1f),
                                 )
-                            }
-                            if (state.stops.isEmpty()) {
-                                item {
-                                    Text(
-                                        text = stringResource(R.string.edit_no_stops),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                TextButton(onClick = { showLibraryPicker = true }) {
+                                    Text(stringResource(R.string.library_pick_title))
                                 }
                             }
+                        }
+                        if (!showStopsEditor || state.stops.isEmpty()) {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.edit_no_stops),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        if (showStopsEditor) {
                             itemsIndexed(state.stops, key = { _, stop -> stop.localId }) { index, stop ->
                                 CompactStopRow(
                                     index = index + 1,
@@ -212,10 +242,12 @@ fun EditRouteScreen(
                                 )
                             }
                         }
-                        if (state.errorMessage != null) {
+                        if (state.errorRes != null) {
                             item {
                                 Text(
-                                    text = state.errorMessage.orEmpty(),
+                                    text = state.errorArg?.let { arg ->
+                                        stringResource(state.errorRes!!, arg)
+                                    } ?: stringResource(state.errorRes!!),
                                     color = MaterialTheme.colorScheme.error,
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
@@ -247,6 +279,16 @@ fun EditRouteScreen(
                     }
                 }
             }
+        }
+
+        if (showLibraryPicker) {
+            StopLibraryPickerDialog(
+                stops = libraryStops,
+                onDismiss = { showLibraryPicker = false },
+                onPick = { stop -> viewModel.addStopFromLibrary(stop.id) },
+                onManageLibrary = onOpenStopLibrary,
+                alreadyOnRouteLibraryIds = state.stops.mapNotNull { it.libraryStopId }.toSet(),
+            )
         }
     }
 }
@@ -293,6 +335,13 @@ private fun CompactStopRow(
             onValueChange = { value -> onChange { it.copy(name = value) } },
             label = stringResource(R.string.edit_stop_label, index),
         )
+        if (stop.libraryStopId != null) {
+            Text(
+                text = stringResource(R.string.library_linked_badge),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
         SoftOutlinedTextField(
             value = stop.notes,
             onValueChange = { value -> onChange { it.copy(notes = value) } },

@@ -25,6 +25,10 @@ data class LatLng(
     val longitude: Double,
     /** Degrees clockwise from north; null when unknown. */
     val bearingDegrees: Float? = null,
+    /** Horizontal speed m/s when known — used to prefer GPS course while moving. */
+    val speedMps: Float? = null,
+    /** Horizontal accuracy in meters when known — used for poor-GPS hints. */
+    val accuracyMeters: Float? = null,
 )
 
 private class MapJsBridge(
@@ -83,6 +87,8 @@ private class MapWebState {
     var fittedRouteSignature: String? = null
     var pushedUserKey: String? = null
     var pushedNavKey: String? = null
+    /** Once true, we have flown the camera to the user at least once for this WebView. */
+    var hasFlownToUser: Boolean = false
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -229,10 +235,11 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
         val bearing = user.bearingDegrees?.takeIf { it >= 0f }
         val userKey = "${user.latitude},${user.longitude},${bearing ?: -1},${forceFlyToUser},${state.lastDriveFollow}"
         if (state.pushedUserKey == userKey && !forceFlyToUser && !state.pendingResumeFollow) return@let
-        val firstCenter = state.lastRecenterToken < 0 && !forceFlyToUser
-        val fly = forceFlyToUser || firstCenter
+        // Always fly on the first fix for this map instance (empty routes, new screens).
+        val fly = forceFlyToUser || !state.hasFlownToUser
         pushUserLocation(webView, user, fly = fly, bearing = bearing)
         state.pushedUserKey = userKey
+        if (fly) state.hasFlownToUser = true
     }
 
     if (state.pendingResumeFollow) {

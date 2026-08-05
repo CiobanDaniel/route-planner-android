@@ -39,6 +39,7 @@
             border-right: 8px solid transparent;
             border-bottom: 22px solid #1A73E8;
             filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+            transform-origin: 50% 70%;
         }
     </style>
 </head>
@@ -61,7 +62,7 @@
         bearing: 0,
         touchRotate: true,
         rotateControl: false
-    }).setView([45.7489, 21.2257], 12);
+    }).setView([20, 0], 2);
 
     var baseLayers = {
         map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -155,20 +156,28 @@
         });
     }
 
+    function onMapRotated() {
+        // leaflet-rotate bakes map bearing into the marker pane transform.
+        // Recompute the tip as (phoneHeading - mapBearing) whenever the map
+        // rotates, or the triangle tracks the map gesture instead of the phone.
+        updateUserMarkerVisual();
+        redrawVectors();
+    }
+
     map.on('dragstart', beginGesture);
     map.on('zoomstart', beginGesture);
     map.on('rotatestart', beginGesture);
     map.on('dragend', endGesture);
     map.on('zoomend', function () {
         endGesture();
-        redrawVectors();
+        onMapRotated();
     });
     map.on('rotateend', function () {
         endGesture();
-        redrawVectors();
+        onMapRotated();
     });
-    map.on('moveend', redrawVectors);
-    map.on('rotate', redrawVectors);
+    map.on('moveend', onMapRotated);
+    map.on('rotate', onMapRotated);
 
     map.getContainer().addEventListener('touchstart', function (e) {
         if (e.touches.length >= 2) beginGesture();
@@ -200,6 +209,13 @@
         if (userMarker) userMarker.setZIndexOffset(1000);
     }
 
+    function applyMapBearing() {
+        // Avoid truthiness check — bearing 0 (north) is valid and must still be applied.
+        if (typeof map.setBearing === 'function' && Number.isFinite(lastBearing)) {
+            map.setBearing(lastBearing);
+        }
+    }
+
     function setDriveFollow(enabled) {
         var was = driveFollow;
         driveFollow = !!enabled;
@@ -210,7 +226,7 @@
                 map.setView(userMarker.getLatLng(), Math.max(map.getZoom(), 17), { animate: false });
             }
             updateUserMarkerVisual();
-            if (lastBearing) map.setBearing(lastBearing);
+            applyMapBearing();
         }
         if (!driveFollow && was) {
             followPaused = false;
@@ -225,9 +241,11 @@
         gestureDepth = 0;
         notifyFollowPaused(false);
         if (driveFollow && lastUserLatLng) {
-            if (lastBearing) map.setBearing(lastBearing);
-            var ahead = pointAhead(lastUserLatLng, lastBearing, 55);
+            applyMapBearing();
+            var ahead = pointAhead(lastUserLatLng, lastBearing || 0, 55);
             map.setView(ahead, Math.max(map.getZoom(), 17), { animate: false });
+            applyMapBearing();
+            updateUserMarkerVisual();
         }
     }
 
@@ -237,13 +255,19 @@
         if (!el) return;
         var tip = el.querySelector('.user-dot, .user-chevron');
         if (!tip) return;
-        if (driveFollow) {
-            tip.className = 'user-chevron';
+        tip.className = Number.isFinite(lastBearing) ? 'user-chevron' : 'user-dot';
+        if (!Number.isFinite(lastBearing)) {
             tip.style.transform = '';
-        } else {
-            tip.className = 'user-dot';
-            tip.style.transform = 'rotate(' + lastBearing + 'deg)';
+            return;
         }
+        // leaflet-rotate puts markerPane on norotatePane (screen-fixed).
+        // Tip angle = phone heading relative to map bearing (CSS clockwise).
+        var mapBearing = 0;
+        if (typeof map.getBearing === 'function') {
+            mapBearing = map.getBearing() || 0;
+        }
+        var angle = (lastBearing - mapBearing + 360) % 360;
+        tip.style.transform = 'rotate(' + angle + 'deg)';
     }
 
     function clearLongPress() {
@@ -305,6 +329,8 @@
 
     function setUserLocation(lat, lng, fly, bearing) {
         var latlng = L.latLng(lat, lng);
+        var prev = lastUserLatLng;
+        var moved = !prev || prev.distanceTo(latlng) > 2;
         lastUserLatLng = latlng;
         if (typeof bearing === 'number' && !isNaN(bearing) && bearing >= 0) {
             lastBearing = bearing;
@@ -328,19 +354,27 @@
             followPaused = false;
             notifyFollowPaused(false);
             var targetZoom = driveFollow ? Math.max(map.getZoom(), 17) : Math.max(map.getZoom(), 15);
-            map.setView(latlng, targetZoom, { animate: false });
+            var flyTarget = driveFollow
+                ? pointAhead(latlng, lastBearing || 0, 55)
+                : latlng;
+            map.setView(flyTarget, targetZoom, { animate: false });
             hasCenteredOnUser = true;
-            if (driveFollow && lastBearing) {
-                map.setBearing(lastBearing);
-            }
+            if (driveFollow) applyMapBearing();
         } else if (driveFollow && !followPaused && gestureDepth === 0) {
-            if (lastBearing) map.setBearing(lastBearing);
-            var ahead = pointAhead(latlng, lastBearing, 55);
-            map.panTo(ahead, { animate: true, duration: 0.25, easeLinearity: 0.4 });
+            // Rotate on every heading update; only pan when the user actually moved.
+            // Animated panTo was racing setBearing and snapping the camera north.
+            applyMapBearing();
+            if (moved) {
+                var ahead = pointAhead(latlng, lastBearing || 0, 55);
+                map.setView(ahead, Math.max(map.getZoom(), 17), { animate: false });
+                applyMapBearing();
+            }
             hasCenteredOnUser = true;
         } else if (!hasCenteredOnUser) {
             map.setView(latlng, 15, { animate: false });
             hasCenteredOnUser = true;
+        } else if (!driveFollow && Number.isFinite(lastBearing)) {
+            updateUserMarkerVisual();
         }
     }
 

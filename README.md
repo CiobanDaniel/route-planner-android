@@ -2,7 +2,7 @@
 
 Multi-stop route planning for deliveries. Package: `com.danielcioban.routeplanner`.
 
-Current app version: **0.3.0**
+Current app version: **0.3.1**
 
 ## Quick start
 
