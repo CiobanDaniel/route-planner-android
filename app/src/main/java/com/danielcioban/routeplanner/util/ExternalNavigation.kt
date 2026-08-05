@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.danielcioban.routeplanner.R
 
 /**
  * Opens turn-by-turn navigation in Google Maps, Waze, or any geo-capable app.
@@ -13,9 +14,10 @@ object ExternalNavigation {
         context: Context,
         latitude: Double,
         longitude: Double,
-        label: String = "Stop",
+        label: String = "",
     ): Boolean {
-        val encodedLabel = Uri.encode(label.ifBlank { "Stop" })
+        val fallbackLabel = context.getString(R.string.external_nav_stop_fallback)
+        val encodedLabel = Uri.encode(label.ifBlank { fallbackLabel })
         val packageManager = context.packageManager
 
         val googleMaps = Intent(
@@ -57,7 +59,10 @@ object ExternalNavigation {
                 installed.size >= 2 -> {
                     val primary = installed.first()
                     val extras = installed.drop(1).toTypedArray()
-                    val chooser = Intent.createChooser(primary, "Navigate with").apply {
+                    val chooser = Intent.createChooser(
+                        primary,
+                        context.getString(R.string.external_nav_chooser),
+                    ).apply {
                         putExtra(Intent.EXTRA_INITIAL_INTENTS, extras)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }

@@ -40,6 +40,9 @@ interface RouteDao {
     @Update
     suspend fun updateStop(stop: StopEntity)
 
+    @Query("SELECT * FROM stops WHERE id = :stopId")
+    suspend fun getStop(stopId: Long): StopEntity?
+
     @Query("SELECT COALESCE(MAX(position), -1) FROM stops WHERE routeId = :routeId")
     suspend fun maxStopPosition(routeId: Long): Int
 

@@ -1,12 +1,16 @@
 package com.danielcioban.routeplanner.ui.map
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,15 +23,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
@@ -35,20 +38,59 @@ import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
 fun MapLayersButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FloatingCircleButton(onClick = onClick, modifier = modifier) {
+        Icon(
+            Icons.Default.Layers,
+            contentDescription = stringResource(R.string.cd_map_layers),
+            tint = IslandColors.onSurface,
+        )
+    }
+}
+
+/**
+ * Full-window map-type / follow-me menu. Call from a [fillMaxSize] root [Box]
+ * (or anywhere that is not a height-wrapping parent) so it cannot reflow siblings.
+ */
+@Composable
+fun MapLayersMenuDialog(
     selected: MapViewMode,
     onSelected: (MapViewMode) -> Unit,
     driveFollow: Boolean = false,
     onDriveFollowChange: ((Boolean) -> Unit)? = null,
-    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
-        if (expanded) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(16.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+        ) {
             FloatingIsland(
                 modifier = Modifier
-                    .width(240.dp)
-                    .padding(bottom = 10.dp),
+                    .align(Alignment.TopEnd)
+                    .width(260.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
                 shape = RoundedCornerShape(22.dp),
                 contentPadding = 10.dp,
             ) {
@@ -71,6 +113,7 @@ fun MapLayersButton(
                                     } else {
                                         onDriveFollowChange?.invoke(false)
                                     }
+                                    onDismiss()
                                 }
                                 .padding(horizontal = 10.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -138,14 +181,6 @@ fun MapLayersButton(
                     }
                 }
             }
-        }
-
-        FloatingCircleButton(onClick = { expanded = !expanded }) {
-            Icon(
-                Icons.Default.Layers,
-                contentDescription = stringResource(R.string.cd_map_layers),
-                tint = IslandColors.onSurface,
-            )
         }
     }
 }

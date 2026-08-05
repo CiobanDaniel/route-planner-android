@@ -23,13 +23,24 @@ fun Context.hasLocationPermission(): Boolean {
 }
 
 @SuppressLint("MissingPermission")
+suspend fun Context.lastKnownLocationOrNull(): Location? {
+    if (!hasLocationPermission()) return null
+    val client = LocationServices.getFusedLocationProviderClient(this)
+    return suspendCancellableCoroutine { cont ->
+        client.lastLocation
+            .addOnSuccessListener { cont.resume(it) }
+            .addOnFailureListener { cont.resume(null) }
+    }
+}
+
+@SuppressLint("MissingPermission")
 suspend fun Context.currentLocationOrNull(): Location? {
     if (!hasLocationPermission()) return null
     val client = LocationServices.getFusedLocationProviderClient(this)
     return suspendCancellableCoroutine { cont ->
         val cts = CancellationTokenSource()
         cont.invokeOnCancellation { cts.cancel() }
-        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+        client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)
             .addOnSuccessListener { location ->
                 if (location != null) {
                     cont.resume(location)
@@ -39,7 +50,11 @@ suspend fun Context.currentLocationOrNull(): Location? {
                         .addOnFailureListener { cont.resume(null) }
                 }
             }
-            .addOnFailureListener { cont.resume(null) }
+            .addOnFailureListener {
+                client.lastLocation
+                    .addOnSuccessListener { last -> cont.resume(last) }
+                    .addOnFailureListener { cont.resume(null) }
+            }
     }
 }
 

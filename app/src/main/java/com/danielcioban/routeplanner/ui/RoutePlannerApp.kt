@@ -14,6 +14,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.danielcioban.routeplanner.RoutePlannerApplication
 import com.danielcioban.routeplanner.data.settings.AppSettings
+import com.danielcioban.routeplanner.ui.about.AboutScreen
+import com.danielcioban.routeplanner.ui.library.StopLibraryScreen
+import com.danielcioban.routeplanner.ui.library.StopLibraryViewModel
 import com.danielcioban.routeplanner.ui.navigation.AppDestinations
 import com.danielcioban.routeplanner.ui.routes.EditRouteScreen
 import com.danielcioban.routeplanner.ui.routes.EditRouteViewModel
@@ -23,6 +26,7 @@ import com.danielcioban.routeplanner.ui.routes.RouteListScreen
 import com.danielcioban.routeplanner.ui.routes.RouteListViewModel
 import com.danielcioban.routeplanner.ui.settings.SettingsScreen
 import com.danielcioban.routeplanner.ui.settings.SettingsViewModel
+import com.danielcioban.routeplanner.util.NetworkStatus
 
 @Composable
 fun RoutePlannerApp(
@@ -34,6 +38,11 @@ fun RoutePlannerApp(
     val settingsRepository = remember { app.settingsRepository }
     val deliverySessionStore = remember { app.deliverySessionStore }
     val navController = rememberNavController()
+    val appVersion = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty().ifBlank { "0.3.1" }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -52,6 +61,8 @@ fun RoutePlannerApp(
                         navController.navigate(AppDestinations.routeDetail(routeId))
                     },
                     onOpenSettings = { navController.navigate(AppDestinations.SETTINGS) },
+                    onOpenAbout = { navController.navigate(AppDestinations.ABOUT) },
+                    onOpenStopLibrary = { navController.navigate(AppDestinations.STOP_LIBRARY) },
                 )
             }
 
@@ -61,13 +72,19 @@ fun RoutePlannerApp(
             ) { entry ->
                 val routeId = entry.arguments?.getLong("routeId") ?: return@composable
                 val viewModel: RouteDetailViewModel = viewModel(
-                    factory = RouteDetailViewModel.Factory(repository, routeId, deliverySessionStore),
+                    factory = RouteDetailViewModel.Factory(
+                        repository = repository,
+                        routeId = routeId,
+                        deliverySessionStore = deliverySessionStore,
+                        isOnline = { NetworkStatus.isOnline(app) },
+                    ),
                 )
                 RouteDetailScreen(
                     viewModel = viewModel,
                     settings = settings,
                     onBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate(AppDestinations.routeEdit(id)) },
+                    onOpenStopLibrary = { navController.navigate(AppDestinations.STOP_LIBRARY) },
                 )
             }
 
@@ -84,6 +101,7 @@ fun RoutePlannerApp(
                     viewModel = viewModel,
                     isNew = routeId == null,
                     onBack = { navController.popBackStack() },
+                    onOpenStopLibrary = { navController.navigate(AppDestinations.STOP_LIBRARY) },
                     onSaved = { savedId ->
                         navController.navigate(AppDestinations.routeDetail(savedId)) {
                             popUpTo(AppDestinations.ROUTE_LIST)
@@ -98,6 +116,23 @@ fun RoutePlannerApp(
                     factory = SettingsViewModel.Factory(settingsRepository),
                 )
                 SettingsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(AppDestinations.ABOUT) {
+                AboutScreen(
+                    appVersion = appVersion,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(AppDestinations.STOP_LIBRARY) {
+                val viewModel: StopLibraryViewModel = viewModel(
+                    factory = StopLibraryViewModel.Factory(repository),
+                )
+                StopLibraryScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
                 )
