@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,8 +16,11 @@ import androidx.navigation.navArgument
 import com.danielcioban.routeplanner.RoutePlannerApplication
 import com.danielcioban.routeplanner.data.settings.AppSettings
 import com.danielcioban.routeplanner.ui.about.AboutScreen
+import com.danielcioban.routeplanner.ui.account.AccountScreen
+import com.danielcioban.routeplanner.ui.account.AccountViewModel
 import com.danielcioban.routeplanner.ui.library.StopLibraryScreen
 import com.danielcioban.routeplanner.ui.library.StopLibraryViewModel
+import com.danielcioban.routeplanner.ui.map.MapViewMode
 import com.danielcioban.routeplanner.ui.navigation.AppDestinations
 import com.danielcioban.routeplanner.ui.routes.EditRouteScreen
 import com.danielcioban.routeplanner.ui.routes.EditRouteViewModel
@@ -26,6 +30,7 @@ import com.danielcioban.routeplanner.ui.routes.RouteListScreen
 import com.danielcioban.routeplanner.ui.routes.RouteListViewModel
 import com.danielcioban.routeplanner.ui.settings.SettingsScreen
 import com.danielcioban.routeplanner.ui.settings.SettingsViewModel
+import kotlinx.coroutines.launch
 import com.danielcioban.routeplanner.util.NetworkStatus
 
 @Composable
@@ -37,6 +42,11 @@ fun RoutePlannerApp(
     val repository = remember { app.repository }
     val settingsRepository = remember { app.settingsRepository }
     val deliverySessionStore = remember { app.deliverySessionStore }
+    val accountSessionStore = remember { app.accountSessionStore }
+    val scope = rememberCoroutineScope()
+    val persistMapStyle: (MapViewMode) -> Unit = { mode ->
+        scope.launch { settingsRepository.setPreferredMapStyle(mode) }
+    }
     val navController = rememberNavController()
     val appVersion = remember {
         runCatching {
@@ -52,7 +62,11 @@ fun RoutePlannerApp(
         ) {
             composable(AppDestinations.ROUTE_LIST) {
                 val viewModel: RouteListViewModel = viewModel(
-                    factory = RouteListViewModel.Factory(repository, deliverySessionStore),
+                    factory = RouteListViewModel.Factory(
+                        repository,
+                        deliverySessionStore,
+                        accountSessionStore,
+                    ),
                 )
                 RouteListScreen(
                     viewModel = viewModel,
@@ -63,6 +77,10 @@ fun RoutePlannerApp(
                     onOpenSettings = { navController.navigate(AppDestinations.SETTINGS) },
                     onOpenAbout = { navController.navigate(AppDestinations.ABOUT) },
                     onOpenStopLibrary = { navController.navigate(AppDestinations.STOP_LIBRARY) },
+                    onOpenAccount = { navController.navigate(AppDestinations.ACCOUNT) },
+                    preferredMapStyle = settings.preferredMapStyle,
+                    onPreferredMapStyleChange = persistMapStyle,
+                    distanceUnit = settings.distanceUnit,
                 )
             }
 
@@ -85,6 +103,7 @@ fun RoutePlannerApp(
                     onBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate(AppDestinations.routeEdit(id)) },
                     onOpenStopLibrary = { navController.navigate(AppDestinations.STOP_LIBRARY) },
+                    onPreferredMapStyleChange = persistMapStyle,
                 )
             }
 
@@ -113,9 +132,19 @@ fun RoutePlannerApp(
 
             composable(AppDestinations.SETTINGS) {
                 val viewModel: SettingsViewModel = viewModel(
-                    factory = SettingsViewModel.Factory(settingsRepository),
+                    factory = SettingsViewModel.Factory(settingsRepository, repository),
                 )
                 SettingsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(AppDestinations.ACCOUNT) {
+                val viewModel: AccountViewModel = viewModel(
+                    factory = AccountViewModel.Factory(accountSessionStore),
+                )
+                AccountScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
                 )

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.danielcioban.routeplanner.ui.map.MapViewMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -39,6 +40,8 @@ data class AppSettings(
     val language: AppLanguage = AppLanguage.ENGLISH,
     val distanceUnit: DistanceUnit = DistanceUnit.METRIC,
     val keepScreenOnDuringNav: Boolean = true,
+    /** Last browse map style (never Driving — that's session follow-me). */
+    val preferredMapStyle: MapViewMode = MapViewMode.MAP,
 )
 
 class SettingsRepository(private val context: Context) {
@@ -47,6 +50,7 @@ class SettingsRepository(private val context: Context) {
         val language = stringPreferencesKey("language")
         val distanceUnit = stringPreferencesKey("distance_unit")
         val keepScreenOn = booleanPreferencesKey("keep_screen_on_nav")
+        val preferredMapStyle = stringPreferencesKey("preferred_map_style")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -59,6 +63,9 @@ class SettingsRepository(private val context: Context) {
                 runCatching { DistanceUnit.valueOf(it) }.getOrDefault(DistanceUnit.METRIC)
             } ?: DistanceUnit.METRIC,
             keepScreenOnDuringNav = prefs[Keys.keepScreenOn] ?: true,
+            preferredMapStyle = prefs[Keys.preferredMapStyle]?.let { id ->
+                MapViewMode.entries.firstOrNull { it.id == id && it != MapViewMode.DRIVING }
+            } ?: MapViewMode.MAP,
         )
     }
 
@@ -76,5 +83,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setKeepScreenOnDuringNav(enabled: Boolean) {
         context.dataStore.edit { it[Keys.keepScreenOn] = enabled }
+    }
+
+    suspend fun setPreferredMapStyle(mode: MapViewMode) {
+        if (mode == MapViewMode.DRIVING) return
+        context.dataStore.edit { it[Keys.preferredMapStyle] = mode.id }
     }
 }

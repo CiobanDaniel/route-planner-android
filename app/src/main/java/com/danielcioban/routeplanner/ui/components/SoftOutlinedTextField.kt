@@ -18,6 +18,7 @@ fun SoftOutlinedTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     placeholder: String? = null,
+    enabled: Boolean = true,
 ) {
     OutlinedTextField(
         value = value,
@@ -25,6 +26,7 @@ fun SoftOutlinedTextField(
         label = { Text(label, color = IslandColors.onSurfaceMuted) },
         placeholder = placeholder?.let { { Text(it, color = IslandColors.onSurfaceMuted.copy(alpha = 0.65f)) } },
         modifier = modifier,
+        enabled = enabled,
         singleLine = singleLine,
         minLines = if (singleLine) 1 else minLines,
         shape = RoundedCornerShape(16.dp),
@@ -42,7 +44,7 @@ fun islandTextFieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = IslandColors.fieldBorderFocused,
     focusedBorderColor = IslandColors.fieldBorderFocused,
     unfocusedBorderColor = IslandColors.fieldBorder,
-    focusedContainerColor = IslandColors.surface,
-    unfocusedContainerColor = IslandColors.surface,
-    disabledContainerColor = IslandColors.surface,
+    focusedContainerColor = IslandColors.rowSurface,
+    unfocusedContainerColor = IslandColors.rowSurface,
+    disabledContainerColor = IslandColors.rowSurface,
 )

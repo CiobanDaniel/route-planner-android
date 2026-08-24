@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.danielcioban.routeplanner.util.newRemoteId
 
 @Entity(
     tableName = "stops",
@@ -15,10 +16,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("routeId")],
+    indices = [Index("routeId"), Index("libraryStopId"), Index(value = ["remoteId"], unique = true)],
 )
 data class StopEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val remoteId: String = newRemoteId(),
     val routeId: Long,
     val position: Int,
     val name: String,
@@ -29,6 +31,7 @@ data class StopEntity(
     /** WGS84 longitude. Null until the user sets coordinates. */
     val longitude: Double? = null,
     val isCompleted: Boolean = false,
-    /** Optional link to [StopLibraryEntity] (copy-on-add; no hard FK yet). */
+    /** Reference to the canonical [StopLibraryEntity]. Null only for unpinned drafts. */
     val libraryStopId: Long? = null,
+    val deletedAtEpochMs: Long? = null,
 )

@@ -1,14 +1,14 @@
 package com.danielcioban.routeplanner.ui.map
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -34,6 +33,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListDivider
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
@@ -74,7 +75,9 @@ fun MapLayersMenuDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(IslandColors.scrim.copy(alpha = 0.22f))
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(16.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -94,7 +97,7 @@ fun MapLayersMenuDialog(
                 shape = RoundedCornerShape(22.dp),
                 contentPadding = 10.dp,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = stringResource(R.string.map_type_title),
                         style = MaterialTheme.typography.titleSmall,
@@ -103,20 +106,17 @@ fun MapLayersMenuDialog(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                     )
                     MapViewMode.entries.forEach { mode ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onSelected(mode)
-                                    if (mode == MapViewMode.DRIVING) {
-                                        onDriveFollowChange?.invoke(true)
-                                    } else {
-                                        onDriveFollowChange?.invoke(false)
-                                    }
-                                    onDismiss()
+                        IslandListItem(
+                            selected = mode == selected,
+                            onClick = {
+                                onSelected(mode)
+                                if (mode == MapViewMode.DRIVING) {
+                                    onDriveFollowChange?.invoke(true)
+                                } else {
+                                    onDriveFollowChange?.invoke(false)
                                 }
-                                .padding(horizontal = 10.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                onDismiss()
+                            },
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -141,16 +141,8 @@ fun MapLayersMenuDialog(
                         }
                     }
                     if (onDriveFollowChange != null) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 6.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                        IslandListDivider()
+                        IslandListItem {
                             Icon(
                                 Icons.Default.Navigation,
                                 contentDescription = null,

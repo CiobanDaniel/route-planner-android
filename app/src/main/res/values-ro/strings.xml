@@ -27,7 +27,26 @@
     <string name="settings_navigation">Navigație</string>
     <string name="settings_keep_screen_on">Păstrează ecranul aprins</string>
     <string name="settings_keep_screen_on_hint">Previne stingerea ecranului în timpul livrării</string>
-    <string name="settings_footer_hint">Opțiunile de cont și sincronizare vor apărea aici mai târziu.</string>
+    <string name="settings_footer_hint">Folosește Cont din meniu pentru previzualizarea autentificării. Sincronizarea cloud vine după alegerea furnizorului.</string>
+    <string name="settings_data">Date</string>
+    <string name="settings_backup_hint">Exportă sau importă rute, opriri din bibliotecă și sarcini ca JSON. Fuzionează după ID-uri stabile — util înainte de sync cloud.</string>
+    <string name="backup_export_action">Exportă backup</string>
+    <string name="backup_import_action">Importă backup</string>
+    <string name="backup_export_subject">Backup Planificator rute</string>
+    <string name="backup_export_chooser">Partajează backup</string>
+    <string name="backup_import_success">Importate %1$d rută(e) și %2$d oprire(i) din bibliotecă.</string>
+    <string name="backup_import_failed">Nu s-a putut citi fișierul de backup.</string>
+
+    <string name="account_title">Cont</string>
+    <string name="account_menu_signed_out">Doar local — atinge pentru autentificare</string>
+    <string name="account_signed_out_title">Neautentificat</string>
+    <string name="account_signed_out_body">Rutele și opririle rămân pe acest dispozitiv. Autentifică-te mai târziu pentru sync pe mai multe telefoane și partajare în echipă.</string>
+    <string name="account_signed_in_title">Autentificat</string>
+    <string name="account_signed_in_body">Sincronizarea cloud nu este conectată încă. Datele rămân locale; exportă un backup JSON din Setări dacă ai nevoie de o copie.</string>
+    <string name="account_display_name">Nume afișat</string>
+    <string name="account_email">Email</string>
+    <string name="account_preview_hint">Build debug: autentificarea preview salvează doar numele și emailul — fără parolă sau token.</string>
+    <string name="account_preview_sign_in">Autentificare preview</string>
 
     <string name="theme_system">Implicit sistem</string>
     <string name="theme_light">Deschis</string>
@@ -57,6 +76,15 @@
     <string name="dialog_delete_stop_body">„%1$s” va fi eliminată din rută.</string>
     <string name="dialog_delete_stop_body_linked">„%1$s” va fi eliminată doar din această rută. Intrarea din bibliotecă rămâne.</string>
 
+    <string name="tasks_title">Sarcini</string>
+    <string name="tasks_empty">Încă nu există sarcini. Adaugă munca necesară la această oprire.</string>
+    <string name="tasks_title_label">Sarcină</string>
+    <string name="tasks_add">Adaugă sarcină</string>
+    <string name="tasks_required">Obligatorie</string>
+    <string name="tasks_completion_note">Notă de finalizare (opțional)</string>
+    <string name="tasks_required_before_stop_complete">Finalizează toate sarcinile obligatorii înainte de a marca oprirea ca terminată</string>
+    <string name="tasks_progress">%1$d / %2$d gata</string>
+
     <string name="cd_back">Înapoi</string>
     <string name="cd_edit">Editează</string>
     <string name="cd_recenter">Centrează</string>
@@ -66,10 +94,15 @@
     <string name="cd_move_down">Mută în jos</string>
     <string name="cd_remove">Elimină</string>
     <string name="cd_map_layers">Straturi hartă</string>
+    <string name="cd_bottom_sheet_collapse">Trage în jos ca să vezi mai mult din hartă</string>
+    <string name="cd_bottom_sheet_expand">Trage în sus ca să extinzi panoul</string>
 
     <string name="route_fallback_name">Rută</string>
     <string name="detail_map_free">Hartă liberă · atinge locația pentru a relua</string>
-    <string name="detail_delivery_active">Livrare activă · %1$d rămase</string>
+    <plurals name="detail_delivery_active">
+        <item quantity="one">Livrare activă · %1$d rămasă</item>
+        <item quantity="other">Livrare activă · %1$d rămase</item>
+    </plurals>
     <string name="detail_long_press_hint">Ține apăsat pe hartă pentru a adăuga o oprire</string>
     <string name="detail_empty_subtitle">Adaugă prima oprire de livrare</string>
     <string name="detail_empty_title">Pune prima oprire</string>
@@ -77,7 +110,10 @@
     <string name="detail_empty_search">Caută adresă</string>
     <string name="detail_empty_long_press">Sfat: ține apăsat pe hartă oriunde pentru a pune un pin.</string>
     <string name="detail_no_coordinates">Fără coordonate</string>
-    <string name="detail_completed_count">%1$d/%2$d finalizate</string>
+    <plurals name="detail_completed_count">
+        <item quantity="one">%1$d/%2$d finalizată</item>
+        <item quantity="other">%1$d/%2$d finalizate</item>
+    </plurals>
     <string name="msg_no_map_pin">Această oprire nu are încă un pin pe hartă</string>
     <string name="msg_maps_unavailable">Nu s-a putut deschide Maps sau Waze</string>
     <string name="msg_allow_location_nav">Permite locația pentru navigare</string>
@@ -95,7 +131,10 @@
     <string name="nav_navigating_progress">Navigare · %1$d din %2$d</string>
     <string name="nav_next_stop_progress">Următoarea oprire · %1$d din %2$d</string>
     <string name="nav_done">Gata</string>
-    <string name="nav_left">%1$d rămase</string>
+    <plurals name="nav_left">
+        <item quantity="one">%1$d rămasă</item>
+        <item quantity="other">%1$d rămase</item>
+    </plurals>
     <string name="nav_all_completed">Toate opririle finalizate</string>
     <string name="nav_end_when_ready">Încheie livrarea când ești gata.</string>
     <string name="nav_end_delivery">Încheie livrarea</string>
@@ -125,13 +164,13 @@
     <string name="map_follow_me">Urmărește-mă</string>
     <string name="map_follow_me_desc">Cameră pe direcție în timp ce te miști</string>
     <string name="map_type_map">Hartă</string>
-    <string name="map_type_map_desc">Străzi clare — cea mai bună vedere zilnică</string>
+    <string name="map_type_map_desc">Hartă de străzi cu drumuri închise — cea mai bună vedere zilnică</string>
     <string name="map_type_driving">Conducere</string>
-    <string name="map_type_driving_desc">Navigare pe direcție cu focus pe străzi</string>
+    <string name="map_type_driving_desc">Navigare pe direcție, hartă de străzi mai contrastată</string>
     <string name="map_type_satellite">Satelit</string>
-    <string name="map_type_satellite_desc">Imagini aeriene</string>
+    <string name="map_type_satellite_desc">Imagini aeriene cu drumuri și denumiri</string>
     <string name="map_type_terrain">Teren</string>
-    <string name="map_type_terrain_desc">Dealuri și relief</string>
+    <string name="map_type_terrain_desc">Harta topo: străzi, parcuri și relief</string>
 
     <string name="edit_new_route">Rută nouă</string>
     <string name="edit_edit_route">Editează ruta</string>
@@ -177,26 +216,40 @@
     <string name="dialog_reset_progress_body">Marchează toate opririle acestei rute ca nefăcute.</string>
     <string name="home_resume_delivery">Reia livrarea</string>
     <string name="home_resume_delivery_body">Continuă „%1$s”</string>
-    <string name="home_stops_summary">%1$d opriri · %2$d finalizate</string>
+    <plurals name="home_stops_summary">
+        <item quantity="one">%1$d oprire · %2$d finalizate</item>
+        <item quantity="other">%1$d opriri · %2$d finalizate</item>
+    </plurals>
     <string name="cd_delete_route">Șterge ruta</string>
     <string name="cd_create_route">Creează rută</string>
     <string name="cd_share_route_row">Distribuie</string>
+    <string name="cd_duplicate_route">Duplică ruta</string>
+    <string name="route_copy_suffix">\u0020(copie)</string>
+    <string name="home_filter_routes">Filtrează rutele</string>
+    <string name="home_filter_empty">Nicio rută nu corespunde căutării</string>
+    <string name="action_optimize_order">Optimizează</string>
+    <string name="optimize_done">Ordinea opririlor a fost actualizată pentru un traseu mai scurt</string>
+    <string name="optimize_unchanged">Traseul e deja scurt, sau nu sunt destule opriri pe hartă</string>
+    <string name="optimize_need_pins">Trebuie cel puțin două opriri pe hartă pentru optimizare</string>
 
-    <string name="msg_stops_missing_pins">%1$d opriri rămase fără pin pe hartă</string>
+    <plurals name="msg_stops_missing_pins">
+        <item quantity="one">%1$d oprire rămasă fără pin pe hartă</item>
+        <item quantity="other">%1$d opriri rămase fără pin pe hartă</item>
+    </plurals>
     <string name="detail_from_previous">%1$s față de precedente</string>
     <string name="nav_approx_roads_unavailable">Drumurile nu sunt disponibile — se folosește linie dreaptă</string>
     <string name="nav_approx_offline">Ești offline — se folosește linie dreaptă. Reîncearcă când ai conexiune.</string>
-    <string name="map_attribution">© OpenStreetMap</string>
+    <string name="map_attribution">© OSM · Esri</string>
 
     <string name="menu_about">Despre</string>
     <string name="menu_stop_library">Bibliotecă opriri</string>
 
     <string name="library_title">Bibliotecă opriri</string>
-    <string name="library_blurb">Opriri reutilizabile pe acest dispozitiv. Distribuirea vine odată cu conturile.</string>
+    <string name="library_blurb">Lista centrală de opriri. Rutele le referă; progresul de livrare rămâne pe fiecare rută.</string>
     <string name="library_empty">Nicio oprire salvată încă</string>
-    <string name="library_empty_hint">Dintr-o rută, deschide o oprire și apasă „Salvează în bibliotecă”, sau bifează „Salvează și în bibliotecă” când adaugi un pin.</string>
+    <string name="library_empty_hint">Ține apăsat pe hartă ca să adaugi o oprire, sau adaug-o dintr-o rută. Pinii noi se salvează aici automat.</string>
     <string name="library_pick_title">Adaugă din bibliotecă</string>
-    <string name="library_pick_subtitle">Copiază oprirea pe această rută. Progresul de livrare rămâne doar pe rută. Ștergerea opririi din rută nu șterge biblioteca.</string>
+    <string name="library_pick_subtitle">Adaugă această oprire pe rută. Progresul de livrare rămâne pe rută. Ștergerea de pe rută păstrează intrarea din bibliotecă.</string>
     <string name="library_add_to_route">Adaugă</string>
     <string name="library_open_on_route">Deschide</string>
     <string name="library_already_linked_short">Deja pe această rută</string>
@@ -205,8 +258,26 @@
     <string name="library_update_entry">Actualizează biblioteca</string>
     <string name="library_refresh_from">Reîncarcă din bibliotecă</string>
     <string name="library_also_save">Salvează și în bibliotecă</string>
+    <string name="library_add_saves_to_library">Se salvează în biblioteca de opriri. Rutele păstrează o referință.</string>
     <string name="library_linked_badge">Din bibliotecă</string>
-    <string name="library_linked_hint">Legată de o oprire din bibliotecă. Modificările de aici rămân pe rută până actualizezi biblioteca sau reîncarci din ea.</string>
+    <string name="library_linked_hint">Ruta folosește oprirea din bibliotecă. Salvarea poate actualiza toate rutele sau doar pe aceasta.</string>
+    <string name="library_used_on_list">Folosită pe: %1$s</string>
+    <string name="library_usage_none">Neutilizată pe nicio rută</string>
+    <plurals name="library_usage_count">
+        <item quantity="one">Folosită pe %1$d rută</item>
+        <item quantity="few">Folosită pe %1$d rute</item>
+        <item quantity="other">Folosită pe %1$d de rute</item>
+    </plurals>
+    <string name="library_edit_scope_title">Aplici modificarea?</string>
+    <string name="library_edit_scope_body">„%1$s” este folosită pe: %2$s</string>
+    <string name="library_edit_everywhere">Salvează peste tot</string>
+    <string name="library_edit_this_route">Doar această rută (creează o copie)</string>
+    <string name="library_edit_as_copy">Salvează ca oprire nouă</string>
+    <string name="library_delete_scope_title">Elimini această oprire?</string>
+    <string name="library_delete_everywhere">Șterge din bibliotecă și de pe toate rutele</string>
+    <string name="library_delete_this_route">Elimină doar de pe această rută</string>
+    <string name="library_delete_everywhere_body">„%1$s” este folosită pe: %2$s</string>
+    <string name="library_delete_unused_body">Elimini „%1$s” din bibliotecă?</string>
     <string name="library_added_to_route">Adăugată din bibliotecă</string>
     <string name="library_already_on_route">Deja pe această rută — am deschis oprirea existentă</string>
     <string name="library_missing">Oprirea din bibliotecă nu a fost găsită</string>
@@ -218,18 +289,18 @@
     <string name="library_edit_address">Adresă / indiciu</string>
     <string name="library_edit_latitude">Latitudine</string>
     <string name="library_edit_longitude">Longitudine</string>
-    <string name="library_edit_hint">Modificările se aplică doar bibliotecii. Opririle deja copiate pe rute rămân neschimbate.</string>
+    <string name="library_edit_hint">Dacă alte rute folosesc oprirea, poți actualiza toate sau salva o copie.</string>
     <string name="library_edit_name_required">Numele este obligatoriu</string>
     <string name="library_edit_coords_invalid">Introdu latitudine (−90…90) și longitudine (−180…180) valide</string>
     <string name="library_delete_title">Ștergi din bibliotecă?</string>
-    <string name="library_delete_body">Elimini „%1$s” din bibliotecă? Rutele care au copiat deja această oprire își păstrează copia.</string>
+    <string name="library_delete_body">Elimini „%1$s” din bibliotecă? Poți să o păstrezi pe rute sau să o ștergi peste tot.</string>
     <string name="cd_add_from_library">Adaugă din bibliotecă</string>
     <string name="cd_delete_library_stop">Șterge din bibliotecă</string>
     <string name="about_title">Despre</string>
     <string name="about_version">Versiunea %1$s</string>
     <string name="about_blurb">Planificator de rute de livrare cu mai multe opriri. Rutele și opririle rămân pe acest dispozitiv.</string>
     <string name="about_maps_heading">Hărți</string>
-    <string name="about_maps_body">Date hartă © contribuitorii OpenStreetMap. Dalele pot proveni de la furnizori compatibili OSM (ex. Carto, Esri). Vezi THIRD_PARTY_NOTICES în depozitul proiectului.</string>
+    <string name="about_maps_body">Date hartă © contribuitorii OpenStreetMap. Străzile de zi cu zi folosesc Esri World Street Map (tema întunecată inversează aceleași dale ca drumurile să rămână vizibile). Satelitul e imagini Esri cu drumuri și denumiri; terenul e Esri World Topo. Vezi THIRD_PARTY_NOTICES.</string>
     <string name="about_routing_heading">Rutare și căutare</string>
     <string name="about_routing_body">Direcțiile de conducere folosesc OSRM. Căutarea de adrese folosește Nominatim. Serverele demo publice sunt pentru dezvoltare; în producție folosește propriul serviciu sau unul comercial.</string>
     <string name="about_license">Licențiat sub Apache License 2.0.</string>

@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Refresh
@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,7 +40,7 @@ import com.danielcioban.routeplanner.data.routing.ManeuverFormatter
 import com.danielcioban.routeplanner.data.routing.NavGuidance
 import com.danielcioban.routeplanner.data.routing.NavigationProgress
 import com.danielcioban.routeplanner.data.settings.DistanceUnit
-import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.CollapsibleBottomIsland
 import com.danielcioban.routeplanner.ui.components.StopNotesBanner
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import com.danielcioban.routeplanner.util.GeoUtils
@@ -64,10 +65,11 @@ fun DeliveryHud(
     val completed = (totalStops - progress.remaining).coerceAtLeast(0)
     val approximate = navigation.route?.isApproximate == true
 
-    FloatingIsland(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        contentPadding = 18.dp,
+    CollapsibleBottomIsland(
+        modifier = modifier,
+        maxExpandedHeight = 420.dp,
+        collapsedHeight = 88.dp,
+        contentPadding = 16.dp,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             DeliveryHudHeader(
@@ -161,7 +163,7 @@ private fun DeliveryHudHeader(
             text = if (progress.remaining == 0) {
                 stringResource(R.string.nav_done)
             } else {
-                stringResource(R.string.nav_left, progress.remaining)
+                pluralStringResource(R.plurals.nav_left, progress.remaining, progress.remaining)
             },
             style = MaterialTheme.typography.labelLarge,
             color = IslandColors.onSurfaceMuted,
@@ -169,7 +171,7 @@ private fun DeliveryHudHeader(
         if (progress.remaining > 0) {
             IconButton(onClick = onOpenQueue) {
                 Icon(
-                    Icons.Default.FormatListBulleted,
+                    Icons.AutoMirrored.Filled.FormatListBulleted,
                     contentDescription = stringResource(R.string.cd_open_stop_queue),
                     tint = IslandColors.onSurface,
                 )

@@ -7,6 +7,7 @@ object AppDestinations {
     const val SETTINGS = "settings"
     const val ABOUT = "about"
     const val STOP_LIBRARY = "stop_library"
+    const val ACCOUNT = "account"
 
     fun routeDetail(routeId: Long) = "route_detail/$routeId"
     fun routeCreate() = "route_edit/-1"

@@ -1,6 +1,8 @@
 package com.danielcioban.routeplanner.ui.settings
 
-import androidx.compose.foundation.clickable
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,15 +21,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,8 +44,11 @@ import com.danielcioban.routeplanner.data.settings.DistanceUnit
 import com.danielcioban.routeplanner.data.settings.ThemeMode
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListDivider
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.theme.IslandColors
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -47,6 +56,22 @@ fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val importResult by viewModel.importResult.collectAsStateWithLifecycle()
+    val importFailed by viewModel.importFailed.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let { viewModel.importBackup(context, it) }
+    }
+
+    LaunchedEffect(importResult, importFailed) {
+        if (importResult != null || importFailed) {
+            kotlinx.coroutines.delay(8_000)
+            viewModel.clearImportFeedback()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         RouteMapBackdrop(stops = emptyList())
@@ -107,10 +132,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
-                        color = IslandColors.fieldBorder.copy(alpha = 0.35f),
-                    )
+                    IslandListDivider()
 
                     SettingsSection(title = stringResource(R.string.settings_language))
                     AppLanguage.entries.forEach { language ->
@@ -121,10 +143,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
-                        color = IslandColors.fieldBorder.copy(alpha = 0.35f),
-                    )
+                    IslandListDivider()
 
                     SettingsSection(title = stringResource(R.string.settings_units))
                     DistanceUnit.entries.forEach { unit ->
@@ -135,10 +154,7 @@ fun SettingsScreen(
                         )
                     }
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
-                        color = IslandColors.fieldBorder.copy(alpha = 0.35f),
-                    )
+                    IslandListDivider()
 
                     SettingsSection(title = stringResource(R.string.settings_navigation))
                     SettingsSwitchRow(
@@ -147,6 +163,71 @@ fun SettingsScreen(
                         checked = settings.keepScreenOnDuringNav,
                         onCheckedChange = viewModel::setKeepScreenOnDuringNav,
                     )
+
+                    IslandListDivider()
+
+                    SettingsSection(title = stringResource(R.string.settings_data))
+                    Text(
+                        text = stringResource(R.string.settings_backup_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IslandColors.onSurfaceMuted,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                val json = viewModel.exportBackupJson()
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.backup_export_subject))
+                                    putExtra(Intent.EXTRA_TEXT, json)
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        send,
+                                        context.getString(R.string.backup_export_chooser),
+                                    ),
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Text(stringResource(R.string.backup_export_action))
+                    }
+                    Button(
+                        onClick = {
+                            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Text(stringResource(R.string.backup_import_action))
+                    }
+                    importResult?.let { result ->
+                        Text(
+                            text = stringResource(
+                                R.string.backup_import_success,
+                                result.routesAdded + result.routesUpdated,
+                                result.libraryAdded + result.libraryUpdated,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (importFailed) {
+                        Text(
+                            text = stringResource(R.string.backup_import_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -178,13 +259,7 @@ private fun SettingsChoiceRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    IslandListItem(onClick = onClick, selected = selected) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
@@ -208,12 +283,7 @@ private fun SettingsSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    IslandListItem {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = label,

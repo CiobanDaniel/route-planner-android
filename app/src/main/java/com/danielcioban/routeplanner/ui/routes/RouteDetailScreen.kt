@@ -1,6 +1,5 @@
 package com.danielcioban.routeplanner.ui.routes
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -49,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,8 +56,10 @@ import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.data.settings.AppSettings
 import com.danielcioban.routeplanner.ui.components.AddressSearchDialog
+import com.danielcioban.routeplanner.ui.components.CollapsibleBottomIsland
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.components.MapAttributionChip
 import com.danielcioban.routeplanner.ui.library.StopLibraryPickerDialog
 import com.danielcioban.routeplanner.ui.location.rememberDeviceBearing
@@ -67,6 +68,7 @@ import com.danielcioban.routeplanner.ui.location.rememberUserLocation
 import com.danielcioban.routeplanner.ui.map.LatLng
 import com.danielcioban.routeplanner.ui.map.MapLayersButton
 import com.danielcioban.routeplanner.ui.map.MapLayersMenuHost
+import com.danielcioban.routeplanner.ui.map.MapViewMode
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.map.rememberMapChromeState
 import com.danielcioban.routeplanner.ui.theme.IslandColors
@@ -81,15 +83,21 @@ fun RouteDetailScreen(
     onEdit: (Long) -> Unit,
     onOpenStopLibrary: () -> Unit = {},
     settings: AppSettings = AppSettings(),
+    onPreferredMapStyleChange: (MapViewMode) -> Unit = {},
 ) {
     val routeWithStops by viewModel.route.collectAsStateWithLifecycle()
     val deliveryActive by viewModel.deliveryActive.collectAsStateWithLifecycle()
     val pendingPin by viewModel.pendingPin.collectAsStateWithLifecycle()
     val selectedStopId by viewModel.selectedStopId.collectAsStateWithLifecycle()
+    val selectedStopTasks by viewModel.selectedStopTasks.collectAsStateWithLifecycle()
     val navigation by viewModel.navigation.collectAsStateWithLifecycle()
     val libraryStops by viewModel.stopLibrary.collectAsStateWithLifecycle()
     val noticeMessageRes by viewModel.noticeMessageRes.collectAsStateWithLifecycle()
-    val chrome = rememberMapChromeState()
+    val taskProgressByStopId by viewModel.taskProgressByStopId.collectAsStateWithLifecycle()
+    val chrome = rememberMapChromeState(
+        preferredBrowseMode = settings.preferredMapStyle,
+        onPreferredModeChange = onPreferredMapStyleChange,
+    )
     var focusToken by remember { mutableIntStateOf(0) }
     var focusTarget by remember { mutableStateOf<LatLng?>(null) }
     var followPaused by remember { mutableStateOf(false) }
@@ -98,7 +106,9 @@ fun RouteDetailScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showStopQueue by remember { mutableStateOf(false) }
     var showLibraryPicker by remember { mutableStateOf(false) }
-    var saveNewStopToLibrary by remember { mutableStateOf(false) }
+    var pendingEdit by remember { mutableStateOf<PendingStopPlaceEdit?>(null) }
+    var pendingDelete by remember { mutableStateOf<StopEntity?>(null) }
+    var selectedUsageNames by remember { mutableStateOf<List<String>>(emptyList()) }
     val shareChooserTitle = stringResource(R.string.share_route_chooser)
     val inAppNavigating = navigation.phase == NavigationPhase.Navigating ||
         navigation.phase == NavigationPhase.LoadingRoute ||
@@ -149,7 +159,24 @@ fun RouteDetailScreen(
     val data = routeWithStops
     val stops = data?.orderedStops.orEmpty()
     val selectedStop = stops.firstOrNull { it.id == selectedStopId }
+
+    LaunchedEffect(selectedStop?.libraryStopId) {
+        val libraryId = selectedStop?.libraryStopId
+        if (libraryId == null) {
+            selectedUsageNames = emptyList()
+        } else {
+            viewModel.loadLibraryUsage(libraryId) { selectedUsageNames = it.routeNames }
+        }
+    }
     val progress = viewModel.deliveryProgress()
+    val incompleteUnpinnedCount = remember(stops) {
+        stops.count { !it.isCompleted && (it.latitude == null || it.longitude == null) }
+    }
+    val incompleteUnpinnedMessage = pluralStringResource(
+        R.plurals.msg_stops_missing_pins,
+        incompleteUnpinnedCount,
+        incompleteUnpinnedCount,
+    )
     val hasPinnedStops = stops.any { it.latitude != null && it.longitude != null }
     var didCenterEmptyRoute by remember(routeWithStops?.route?.id) { mutableStateOf(false) }
     LaunchedEffect(userFix, hasPinnedStops, navigating) {
@@ -259,13 +286,14 @@ fun RouteDetailScreen(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                FloatingIsland(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(22.dp),
-                    contentPadding = 12.dp,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FloatingCircleButton(onClick = onBack) {
+                Column(modifier = Modifier.weight(1f)) {
+                    FloatingIsland(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        contentPadding = 12.dp,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        FloatingCircleButton(onClick = onBack, embedded = true) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back),
@@ -282,9 +310,11 @@ fun RouteDetailScreen(
                             )
                             Text(
                                 text = when {
+                                    locationMessage != null -> locationMessage.orEmpty()
                                     followPaused && navigating -> stringResource(R.string.detail_map_free)
-                                    deliveryActive -> stringResource(
-                                        R.string.detail_delivery_active,
+                                    deliveryActive -> pluralStringResource(
+                                        R.plurals.detail_delivery_active,
+                                        progress.remaining,
                                         progress.remaining,
                                     )
                                     stops.isEmpty() -> stringResource(R.string.detail_empty_subtitle)
@@ -292,6 +322,8 @@ fun RouteDetailScreen(
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = IslandColors.onSurfaceMuted,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                         FloatingCircleButton(
@@ -300,6 +332,7 @@ fun RouteDetailScreen(
                                     ShareRoute.share(context, it, shareChooserTitle)
                                 }
                             },
+                            embedded = true,
                         ) {
                             Icon(
                                 Icons.Default.Share,
@@ -310,6 +343,7 @@ fun RouteDetailScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         FloatingCircleButton(
                             onClick = { data?.route?.id?.let(onEdit) },
+                            embedded = true,
                         ) {
                             Icon(
                                 Icons.Default.Edit,
@@ -317,7 +351,11 @@ fun RouteDetailScreen(
                                 tint = IslandColors.onSurface,
                             )
                         }
+                        }
                     }
+                    MapAttributionChip(
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(horizontalAlignment = Alignment.End) {
@@ -378,8 +416,8 @@ fun RouteDetailScreen(
                 }
             }
 
-            // Keep chrome height stable — messages float over the map, they don't
-            // insert into the column and shove the stop list / HUD.
+            // Keep chrome height stable — GPS/status copy lives in the title island
+            // so it does not overlay FABs or shove the stop list / HUD.
             Spacer(modifier = Modifier.weight(1f))
 
             if (deliveryActive) {
@@ -397,9 +435,9 @@ fun RouteDetailScreen(
                     onOpenQueue = { showStopQueue = true },
                 )
             } else if (stops.isEmpty()) {
-                FloatingIsland(
+                CollapsibleBottomIsland(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
+                    maxExpandedHeight = 320.dp,
                     contentPadding = 18.dp,
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -440,14 +478,11 @@ fun RouteDetailScreen(
                     }
                 }
             } else {
-                FloatingIsland(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 320.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    contentPadding = 12.dp,
+                CollapsibleBottomIsland(
+                    modifier = Modifier.fillMaxWidth(),
+                    maxExpandedHeight = 320.dp,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.fillMaxSize()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -455,14 +490,22 @@ fun RouteDetailScreen(
                                 .padding(horizontal = 4.dp, vertical = 4.dp),
                         ) {
                             Text(
-                                text = stringResource(
-                                    R.string.detail_completed_count,
+                                text = pluralStringResource(
+                                    R.plurals.detail_completed_count,
+                                    data?.completedCount ?: 0,
                                     data?.completedCount ?: 0,
                                     stops.size,
                                 ),
                                 style = MaterialTheme.typography.titleSmall,
                                 modifier = Modifier.weight(1f),
                             )
+                            if (!deliveryActive && stops.size >= 2) {
+                                TextButton(
+                                    onClick = { viewModel.optimizeStopOrder(userFix) },
+                                ) {
+                                    Text(stringResource(R.string.action_optimize_order))
+                                }
+                            }
                             if ((data?.completedCount ?: 0) > 0) {
                                 TextButton(onClick = { showResetDialog = true }) {
                                     Text(stringResource(R.string.action_reset_progress))
@@ -470,12 +513,8 @@ fun RouteDetailScreen(
                             }
                             Button(
                                 onClick = {
-                                    val unpinned = stops.count { !it.isCompleted && (it.latitude == null || it.longitude == null) }
-                                    if (unpinned > 0) {
-                                        locationMessage = context.getString(
-                                            R.string.msg_stops_missing_pins,
-                                            unpinned,
-                                        )
+                                    if (incompleteUnpinnedCount > 0) {
+                                        locationMessage = incompleteUnpinnedMessage
                                     }
                                     // Only beginInAppNavigation activates delivery (after GPS is ready).
                                     beginInAppNavigation()
@@ -488,8 +527,9 @@ fun RouteDetailScreen(
                             }
                         }
                         LazyColumn(
+                            modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(vertical = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             itemsIndexed(stops, key = { _, stop -> stop.id }) { index, stop ->
                                 val previous = stops.getOrNull(index - 1)
@@ -498,6 +538,7 @@ fun RouteDetailScreen(
                                     stop = stop,
                                     previous = previous,
                                     selected = stop.id == selectedStopId,
+                                    taskProgress = taskProgressByStopId[stop.id],
                                     distanceUnit = settings.distanceUnit,
                                     canMoveUp = index > 0,
                                     canMoveDown = index < stops.lastIndex,
@@ -510,28 +551,6 @@ fun RouteDetailScreen(
                         }
                     }
                 }
-            }
-        }
-
-        MapAttributionChip(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .statusBarsPadding()
-                .padding(start = 16.dp, top = 88.dp),
-        )
-
-        if (locationMessage != null) {
-            FloatingIsland(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 120.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                contentPadding = 12.dp,
-            ) {
-                Text(locationMessage.orEmpty(), style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -617,8 +636,6 @@ fun RouteDetailScreen(
                 onNameChange = { newStopName = it },
                 notes = newStopNotes,
                 onNotesChange = { newStopNotes = it },
-                alsoSaveToLibrary = saveNewStopToLibrary,
-                onAlsoSaveToLibraryChange = { saveNewStopToLibrary = it },
                 onDismiss = {
                     viewModel.cancelPendingPin()
                     newStopName = ""
@@ -628,33 +645,65 @@ fun RouteDetailScreen(
                     viewModel.confirmPendingStop(
                         name = newStopName,
                         notes = newStopNotes,
-                        alsoSaveToLibrary = saveNewStopToLibrary,
                     )
                     newStopName = ""
                     newStopNotes = ""
-                    saveNewStopToLibrary = false
                 },
             )
         }
 
-        if (selectedStop != null && !deliveryActive) {
+        if (selectedStop != null) {
             SelectedStopDialogs(
                 stop = selectedStop,
+                tasks = selectedStopTasks,
+                usageRouteNames = selectedUsageNames,
+                placeReadOnly = deliveryActive,
                 onDismiss = { viewModel.selectStop(null) },
                 onSave = { name, notes ->
-                    viewModel.updateStopDetails(
-                        stopId = selectedStop.id,
-                        name = name,
-                        notes = notes,
-                        addressHint = selectedStop.addressHint,
-                    )
-                    viewModel.selectStop(null)
+                    val stop = selectedStop
+                    val libraryId = stop.libraryStopId
+                    if (libraryId == null) {
+                        viewModel.updateStopDetails(
+                            stopId = stop.id,
+                            name = name,
+                            notes = notes,
+                            addressHint = stop.addressHint,
+                        )
+                        viewModel.selectStop(null)
+                    } else {
+                        viewModel.loadLibraryUsage(libraryId) { usage ->
+                            if (usage.count > 1) {
+                                pendingEdit = PendingStopPlaceEdit(
+                                    stopId = stop.id,
+                                    name = name,
+                                    notes = notes,
+                                    addressHint = stop.addressHint,
+                                    usage = usage,
+                                )
+                            } else {
+                                viewModel.updateStopDetails(
+                                    stopId = stop.id,
+                                    name = name,
+                                    notes = notes,
+                                    addressHint = stop.addressHint,
+                                )
+                                viewModel.selectStop(null)
+                            }
+                        }
+                    }
                 },
-                onDelete = { viewModel.deleteStop(selectedStop.id) },
-                onSaveToLibrary = { viewModel.saveSelectedStopToLibrary(selectedStop.id) },
-                onRefreshFromLibrary = {
-                    viewModel.refreshStopFromLibrary(selectedStop.id)
+                onDelete = {
+                    if (selectedStop.libraryStopId == null) {
+                        viewModel.deleteStop(selectedStop.id)
+                    } else {
+                        pendingDelete = selectedStop
+                    }
                 },
+                onAddTask = viewModel::addSelectedStopTask,
+                onTaskCompletedChange = viewModel::setStopTaskCompleted,
+                onCompletionNoteChange = viewModel::updateStopTaskCompletionNote,
+                onUpdateTask = viewModel::updateStopTask,
+                onDeleteTask = viewModel::deleteStopTask,
                 onNavigate = {
                     val stop = selectedStop
                     viewModel.selectStop(null)
@@ -678,8 +727,73 @@ fun RouteDetailScreen(
                 },
             )
         }
+
+        pendingEdit?.let { edit ->
+            com.danielcioban.routeplanner.ui.library.LibraryEditScopeDialog(
+                stopName = edit.name,
+                routeNames = edit.usage.routeNames,
+                showThisRoute = true,
+                onEverywhere = {
+                    viewModel.updateStopDetails(
+                        stopId = edit.stopId,
+                        name = edit.name,
+                        notes = edit.notes,
+                        addressHint = edit.addressHint,
+                        scope = com.danielcioban.routeplanner.data.LibraryEditScope.Global,
+                    )
+                    pendingEdit = null
+                    viewModel.selectStop(null)
+                },
+                onThisRoute = {
+                    viewModel.updateStopDetails(
+                        stopId = edit.stopId,
+                        name = edit.name,
+                        notes = edit.notes,
+                        addressHint = edit.addressHint,
+                        scope = com.danielcioban.routeplanner.data.LibraryEditScope.ThisRoute,
+                    )
+                    pendingEdit = null
+                    viewModel.selectStop(null)
+                },
+                onSaveAsCopy = { pendingEdit = null },
+                onDismiss = { pendingEdit = null },
+            )
+        }
+
+        pendingDelete?.let { stop ->
+            com.danielcioban.routeplanner.ui.library.LibraryDeleteScopeDialog(
+                stopName = stop.name,
+                routeNames = selectedUsageNames,
+                showThisRoute = true,
+                onEverywhere = {
+                    viewModel.deleteStop(
+                        stop.id,
+                        com.danielcioban.routeplanner.data.LibraryDeleteScope.Everywhere,
+                    )
+                    pendingDelete = null
+                    viewModel.selectStop(null)
+                },
+                onThisRoute = {
+                    viewModel.deleteStop(
+                        stop.id,
+                        com.danielcioban.routeplanner.data.LibraryDeleteScope.ThisRouteOnly,
+                    )
+                    pendingDelete = null
+                    viewModel.selectStop(null)
+                },
+                onDismiss = { pendingDelete = null },
+            )
+        }
     }
 }
+
+private data class PendingStopPlaceEdit(
+    val stopId: Long,
+    val name: String,
+    val notes: String,
+    val addressHint: String,
+    val usage: com.danielcioban.routeplanner.data.LibraryUsage,
+)
 
 @Composable
 private fun StopRow(
@@ -687,6 +801,7 @@ private fun StopRow(
     stop: StopEntity,
     previous: StopEntity?,
     selected: Boolean,
+    taskProgress: com.danielcioban.routeplanner.data.local.StopTaskProgress?,
     distanceUnit: com.danielcioban.routeplanner.data.settings.DistanceUnit,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -696,13 +811,7 @@ private fun StopRow(
     onMoveDown: () -> Unit,
 ) {
     val hasPin = stop.latitude != null && stop.longitude != null
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
+    IslandListItem(onClick = onClick, selected = selected) {
         Checkbox(checked = stop.isCompleted, onCheckedChange = onCompletedChange)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
@@ -715,6 +824,21 @@ private fun StopRow(
                     text = stringResource(R.string.library_linked_badge),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (taskProgress != null && taskProgress.total > 0) {
+                Text(
+                    text = stringResource(
+                        R.string.tasks_progress,
+                        taskProgress.completed,
+                        taskProgress.total,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (taskProgress.requiredRemaining > 0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
                 )
             }
             if (stop.addressHint.isNotBlank()) {

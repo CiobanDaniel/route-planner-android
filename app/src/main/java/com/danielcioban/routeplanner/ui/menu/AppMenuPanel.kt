@@ -1,11 +1,8 @@
 package com.danielcioban.routeplanner.ui.menu
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,23 +15,25 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.danielcioban.routeplanner.R
+import com.danielcioban.routeplanner.data.account.AccountSession
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListDivider
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
 fun AppMenuPanel(
+    accountSession: AccountSession,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onStopLibrary: () -> Unit,
@@ -44,18 +43,28 @@ fun AppMenuPanel(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val signedIn = accountSession is AccountSession.SignedIn
+    val accountSubtitle = when (accountSession) {
+        AccountSession.SignedOut -> stringResource(R.string.account_menu_signed_out)
+        is AccountSession.SignedIn -> accountSession.email
+    }
+    val profileSubtitle = when (accountSession) {
+        AccountSession.SignedOut -> stringResource(R.string.coming_soon)
+        is AccountSession.SignedIn -> accountSession.displayName
+    }
+
     FloatingIsland(
         modifier = modifier.width(280.dp),
         shape = RoundedCornerShape(24.dp),
         contentPadding = 8.dp,
     ) {
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = stringResource(R.string.menu_title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = IslandColors.onSurface,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             )
             MenuRow(
                 icon = Icons.Default.Settings,
@@ -75,35 +84,30 @@ fun AppMenuPanel(
             MenuRow(
                 icon = Icons.Default.AccountCircle,
                 label = stringResource(R.string.menu_account),
-                subtitle = stringResource(R.string.coming_soon),
-                enabled = false,
+                subtitle = accountSubtitle,
                 onClick = onAccount,
             )
             MenuRow(
                 icon = Icons.Default.Person,
                 label = stringResource(R.string.menu_profile),
-                subtitle = stringResource(R.string.coming_soon),
-                enabled = false,
+                subtitle = profileSubtitle,
+                enabled = signedIn,
                 onClick = onProfile,
             )
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 6.dp, horizontal = 8.dp),
-                color = IslandColors.fieldBorder.copy(alpha = 0.35f),
-            )
-            MenuRow(
-                icon = Icons.AutoMirrored.Filled.Login,
-                label = stringResource(R.string.menu_login),
-                subtitle = stringResource(R.string.coming_soon),
-                enabled = false,
-                onClick = onLogin,
-            )
-            MenuRow(
-                icon = Icons.AutoMirrored.Filled.Logout,
-                label = stringResource(R.string.menu_logout),
-                subtitle = stringResource(R.string.coming_soon),
-                enabled = false,
-                onClick = onLogout,
-            )
+            IslandListDivider()
+            if (signedIn) {
+                MenuRow(
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    label = stringResource(R.string.menu_logout),
+                    onClick = onLogout,
+                )
+            } else {
+                MenuRow(
+                    icon = Icons.AutoMirrored.Filled.Login,
+                    label = stringResource(R.string.menu_login),
+                    onClick = onLogin,
+                )
+            }
         }
     }
 }
@@ -116,13 +120,7 @@ private fun MenuRow(
     subtitle: String? = null,
     enabled: Boolean = true,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    IslandListItem(onClick = onClick, enabled = enabled) {
         Icon(
             imageVector = icon,
             contentDescription = null,

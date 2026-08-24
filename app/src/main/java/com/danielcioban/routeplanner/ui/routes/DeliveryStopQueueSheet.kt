@@ -1,6 +1,5 @@
 package com.danielcioban.routeplanner.ui.routes
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.ui.components.IslandDialog
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
@@ -70,7 +70,7 @@ fun DeliveryStopQueueSheet(
                 color = IslandColors.onSurface,
             )
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 remainingStops.forEachIndexed { index, stop ->
                     val isCurrent = stop.id == currentStopId
                     QueueStopRow(
@@ -98,12 +98,9 @@ private fun QueueStopRow(
     onClick: () -> Unit,
 ) {
     val hasPin = stop.latitude != null && stop.longitude != null
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !isCurrent, onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    IslandListItem(
+        onClick = if (isCurrent) null else onClick,
+        selected = isCurrent,
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

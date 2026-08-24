@@ -1,6 +1,7 @@
 package com.danielcioban.routeplanner.ui.map
 
 import com.danielcioban.routeplanner.data.local.StopEntity
+import com.danielcioban.routeplanner.data.local.StopLibraryEntity
 
 object MapDefaults {
     // Fallback only — live maps start world-zoom then fly to LastKnownMapCenter / GPS.
@@ -55,3 +56,17 @@ fun stopsToLineGeoJson(stops: List<StopEntity>): String {
 
 private fun escapeJson(value: String): String =
     value.replace("\\", "\\\\").replace("\"", "\\\"")
+
+fun libraryStopsToMapStops(stops: List<StopLibraryEntity>): List<StopEntity> =
+    stops.mapIndexed { index, stop ->
+        StopEntity(
+            id = stop.id,
+            routeId = 0L,
+            position = index,
+            name = stop.name,
+            addressHint = stop.addressHint,
+            notes = stop.notes,
+            latitude = stop.latitude,
+            longitude = stop.longitude,
+        )
+    }
