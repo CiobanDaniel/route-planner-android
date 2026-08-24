@@ -1,10 +1,8 @@
 package com.danielcioban.routeplanner.ui.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -115,7 +113,7 @@ fun AddressSearchDialog(
             }
 
             results.isNotEmpty() -> {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     results.forEach { place ->
                         PlaceResultRow(
                             place = place,
@@ -133,19 +131,11 @@ private fun PlaceResultRow(
     place: PlaceSearchResult,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    IslandListItem(onClick = onClick) {
         Icon(
             imageVector = Icons.Default.Place,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 2.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

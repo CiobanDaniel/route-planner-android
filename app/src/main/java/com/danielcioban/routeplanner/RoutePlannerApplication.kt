@@ -4,8 +4,9 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.danielcioban.routeplanner.data.RouteRepository
-import com.danielcioban.routeplanner.data.local.AppDatabase
+import com.danielcioban.routeplanner.data.account.AccountSessionStore
 import com.danielcioban.routeplanner.data.delivery.DeliverySessionStore
+import com.danielcioban.routeplanner.data.local.AppDatabase
 import com.danielcioban.routeplanner.data.settings.SettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -17,12 +18,15 @@ class RoutePlannerApplication : Application() {
         private set
     lateinit var deliverySessionStore: DeliverySessionStore
         private set
+    lateinit var accountSessionStore: AccountSessionStore
+        private set
 
     override fun onCreate() {
         super.onCreate()
         repository = RouteRepository(AppDatabase.get(this))
         settingsRepository = SettingsRepository(this)
         deliverySessionStore = DeliverySessionStore(this)
+        accountSessionStore = AccountSessionStore(this)
         runBlocking {
             val language = settingsRepository.settings.first().language
             AppCompatDelegate.setApplicationLocales(

@@ -27,7 +27,26 @@
     <string name="settings_navigation">Navigation</string>
     <string name="settings_keep_screen_on">Keep screen on</string>
     <string name="settings_keep_screen_on_hint">Prevents sleep while navigating a delivery</string>
-    <string name="settings_footer_hint">Account and sync options will appear here later.</string>
+    <string name="settings_footer_hint">Use Account in the menu for sign-in preview. Cloud sync arrives after auth provider choice.</string>
+    <string name="settings_data">Data</string>
+    <string name="settings_backup_hint">Export or import routes, library stops, and tasks as JSON. Merges by stable IDs — useful before cloud sync.</string>
+    <string name="backup_export_action">Export backup</string>
+    <string name="backup_import_action">Import backup</string>
+    <string name="backup_export_subject">Route Planner backup</string>
+    <string name="backup_export_chooser">Share backup</string>
+    <string name="backup_import_success">Imported %1$d route(s) and %2$d library stop(s).</string>
+    <string name="backup_import_failed">Could not read that backup file.</string>
+
+    <string name="account_title">Account</string>
+    <string name="account_menu_signed_out">Local only — tap to sign in</string>
+    <string name="account_signed_out_title">Not signed in</string>
+    <string name="account_signed_out_body">Routes and stops stay on this device. Sign in later to sync across phones and share with your team.</string>
+    <string name="account_signed_in_title">Signed in</string>
+    <string name="account_signed_in_body">Cloud sync is not wired yet. Your data remains local; export a JSON backup from Settings if you need a copy.</string>
+    <string name="account_display_name">Display name</string>
+    <string name="account_email">Email</string>
+    <string name="account_preview_hint">Debug builds: preview sign-in stores name and email only — no password or token.</string>
+    <string name="account_preview_sign_in">Preview sign-in</string>
 
     <string name="theme_system">System default</string>
     <string name="theme_light">Light</string>
@@ -57,6 +76,15 @@
     <string name="dialog_delete_stop_body">“%1$s” will be removed from the route.</string>
     <string name="dialog_delete_stop_body_linked">“%1$s” will be removed from this route only. The library entry is kept.</string>
 
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_empty">No tasks yet. Add the work required at this stop.</string>
+    <string name="tasks_title_label">Task</string>
+    <string name="tasks_add">Add task</string>
+    <string name="tasks_required">Required</string>
+    <string name="tasks_completion_note">Completion note (optional)</string>
+    <string name="tasks_required_before_stop_complete">Complete all required tasks before marking this stop done</string>
+    <string name="tasks_progress">%1$d / %2$d done</string>
+
     <string name="cd_back">Back</string>
     <string name="cd_edit">Edit</string>
     <string name="cd_recenter">Recenter</string>
@@ -66,10 +94,15 @@
     <string name="cd_move_down">Move down</string>
     <string name="cd_remove">Remove</string>
     <string name="cd_map_layers">Map layers</string>
+    <string name="cd_bottom_sheet_collapse">Drag down to see more map</string>
+    <string name="cd_bottom_sheet_expand">Drag up to expand panel</string>
 
     <string name="route_fallback_name">Route</string>
     <string name="detail_map_free">Map free · tap location to resume</string>
-    <string name="detail_delivery_active">Delivery active · %1$d left</string>
+    <plurals name="detail_delivery_active">
+        <item quantity="one">Delivery active · %1$d left</item>
+        <item quantity="other">Delivery active · %1$d left</item>
+    </plurals>
     <string name="detail_long_press_hint">Long-press map to add a stop</string>
     <string name="detail_empty_subtitle">Add your first delivery stop</string>
     <string name="detail_empty_title">Drop your first stop</string>
@@ -77,7 +110,10 @@
     <string name="detail_empty_search">Search address</string>
     <string name="detail_empty_long_press">Tip: long-press the map anywhere to drop a pin.</string>
     <string name="detail_no_coordinates">No coordinates</string>
-    <string name="detail_completed_count">%1$d/%2$d completed</string>
+    <plurals name="detail_completed_count">
+        <item quantity="one">%1$d/%2$d completed</item>
+        <item quantity="other">%1$d/%2$d completed</item>
+    </plurals>
     <string name="msg_no_map_pin">This stop has no map pin yet</string>
     <string name="msg_maps_unavailable">Couldn’t open Maps or Waze</string>
     <string name="msg_allow_location_nav">Allow location access to navigate</string>
@@ -95,7 +131,10 @@
     <string name="nav_navigating_progress">Navigating · %1$d of %2$d</string>
     <string name="nav_next_stop_progress">Next stop · %1$d of %2$d</string>
     <string name="nav_done">Done</string>
-    <string name="nav_left">%1$d left</string>
+    <plurals name="nav_left">
+        <item quantity="one">%1$d left</item>
+        <item quantity="other">%1$d left</item>
+    </plurals>
     <string name="nav_all_completed">All stops completed</string>
     <string name="nav_end_when_ready">End delivery when you’re ready.</string>
     <string name="nav_end_delivery">End delivery</string>
@@ -125,13 +164,13 @@
     <string name="map_follow_me">Follow me</string>
     <string name="map_follow_me_desc">Heading-up camera while you move</string>
     <string name="map_type_map">Map</string>
-    <string name="map_type_map_desc">Clear streets — best everyday view</string>
+    <string name="map_type_map_desc">Street map with dark roads — best everyday view</string>
     <string name="map_type_driving">Driving</string>
-    <string name="map_type_driving_desc">Heading-up nav with street focus</string>
+    <string name="map_type_driving_desc">Heading-up with a higher-contrast street map</string>
     <string name="map_type_satellite">Satellite</string>
-    <string name="map_type_satellite_desc">Aerial imagery</string>
+    <string name="map_type_satellite_desc">Aerial with roads and place names</string>
     <string name="map_type_terrain">Terrain</string>
-    <string name="map_type_terrain_desc">Hills and elevation</string>
+    <string name="map_type_terrain_desc">Topo streets, parks, and relief</string>
 
     <string name="edit_new_route">New route</string>
     <string name="edit_edit_route">Edit route</string>
@@ -177,26 +216,40 @@
     <string name="dialog_reset_progress_body">Mark every stop on this route as not done.</string>
     <string name="home_resume_delivery">Resume delivery</string>
     <string name="home_resume_delivery_body">Continue “%1$s”</string>
-    <string name="home_stops_summary">%1$d stops · %2$d done</string>
+    <plurals name="home_stops_summary">
+        <item quantity="one">%1$d stop · %2$d done</item>
+        <item quantity="other">%1$d stops · %2$d done</item>
+    </plurals>
     <string name="cd_delete_route">Delete route</string>
     <string name="cd_create_route">Create route</string>
     <string name="cd_share_route_row">Share</string>
+    <string name="cd_duplicate_route">Duplicate route</string>
+    <string name="route_copy_suffix">\u0020(copy)</string>
+    <string name="home_filter_routes">Filter routes</string>
+    <string name="home_filter_empty">No routes match that search</string>
+    <string name="action_optimize_order">Optimize</string>
+    <string name="optimize_done">Stop order updated for a shorter path</string>
+    <string name="optimize_unchanged">Already a short path, or not enough pinned stops</string>
+    <string name="optimize_need_pins">Need at least two pinned stops to optimize</string>
 
-    <string name="msg_stops_missing_pins">%1$d remaining stop(s) have no map pin</string>
+    <plurals name="msg_stops_missing_pins">
+        <item quantity="one">%1$d remaining stop has no map pin</item>
+        <item quantity="other">%1$d remaining stops have no map pin</item>
+    </plurals>
     <string name="detail_from_previous">%1$s from previous</string>
     <string name="nav_approx_roads_unavailable">Roads unavailable — using straight line</string>
     <string name="nav_approx_offline">You’re offline — using straight line. Retry when connected.</string>
-    <string name="map_attribution">© OpenStreetMap</string>
+    <string name="map_attribution">© OSM · Esri</string>
 
     <string name="menu_about">About</string>
     <string name="menu_stop_library">Stop library</string>
 
     <string name="library_title">Stop library</string>
-    <string name="library_blurb">Reusable stops saved on this device. Sharing comes later with accounts.</string>
+    <string name="library_blurb">Central stop list. Routes reference these stops; delivery progress stays on each route.</string>
     <string name="library_empty">No saved stops yet</string>
-    <string name="library_empty_hint">From a route, open a stop and tap “Save to library”, or check “Also save to library” when adding a pin.</string>
+    <string name="library_empty_hint">Long-press the map to add a stop, or add one from a route. New pins are saved here automatically.</string>
     <string name="library_pick_title">Add from library</string>
-    <string name="library_pick_subtitle">Copies the stop onto this route. Delivery progress stays on the route only. Removing the route stop does not delete the library entry.</string>
+    <string name="library_pick_subtitle">Adds this library stop to the route. Delivery progress stays on the route. Removing it from the route keeps the library entry.</string>
     <string name="library_add_to_route">Add</string>
     <string name="library_open_on_route">Open</string>
     <string name="library_already_linked_short">Already on this route</string>
@@ -205,8 +258,25 @@
     <string name="library_update_entry">Update library</string>
     <string name="library_refresh_from">Refresh from library</string>
     <string name="library_also_save">Also save to library</string>
+    <string name="library_add_saves_to_library">Saved to the stop library. Routes keep a reference to it.</string>
     <string name="library_linked_badge">From library</string>
-    <string name="library_linked_hint">Linked to a library stop. Edits here stay on this route until you update the library or refresh from it.</string>
+    <string name="library_linked_hint">This route uses the library stop. Saving can update every route that uses it, or only this one.</string>
+    <string name="library_used_on_list">Used on: %1$s</string>
+    <string name="library_usage_none">Not used on any route</string>
+    <plurals name="library_usage_count">
+        <item quantity="one">Used on %1$d route</item>
+        <item quantity="other">Used on %1$d routes</item>
+    </plurals>
+    <string name="library_edit_scope_title">Apply this change?</string>
+    <string name="library_edit_scope_body">“%1$s” is used on: %2$s</string>
+    <string name="library_edit_everywhere">Save everywhere</string>
+    <string name="library_edit_this_route">Only this route (creates a copy)</string>
+    <string name="library_edit_as_copy">Save as a new stop</string>
+    <string name="library_delete_scope_title">Remove this stop?</string>
+    <string name="library_delete_everywhere">Delete from library and all routes</string>
+    <string name="library_delete_this_route">Remove from this route only</string>
+    <string name="library_delete_everywhere_body">“%1$s” is used on: %2$s</string>
+    <string name="library_delete_unused_body">Remove “%1$s” from the library?</string>
     <string name="library_added_to_route">Added from library</string>
     <string name="library_already_on_route">Already on this route — opened existing stop</string>
     <string name="library_missing">Library stop not found</string>
@@ -218,18 +288,18 @@
     <string name="library_edit_address">Address / hint</string>
     <string name="library_edit_latitude">Latitude</string>
     <string name="library_edit_longitude">Longitude</string>
-    <string name="library_edit_hint">Edits apply to the library only. Stops already copied onto routes are unchanged.</string>
+    <string name="library_edit_hint">If other routes use this stop, you can update them all or save a copy.</string>
     <string name="library_edit_name_required">Name is required</string>
     <string name="library_edit_coords_invalid">Enter valid latitude (−90…90) and longitude (−180…180)</string>
     <string name="library_delete_title">Delete from library?</string>
-    <string name="library_delete_body">Remove “%1$s” from the library? Routes that already copied this stop keep their own copy.</string>
+    <string name="library_delete_body">Remove “%1$s” from the library? You can keep it on routes or delete it everywhere.</string>
     <string name="cd_add_from_library">Add from library</string>
     <string name="cd_delete_library_stop">Delete from library</string>
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_blurb">Multi-stop delivery route planner. Routes and stops stay on this device.</string>
     <string name="about_maps_heading">Maps</string>
-    <string name="about_maps_body">Map data © OpenStreetMap contributors. Tiles may come from OSM-compatible providers (e.g. Carto, Esri). See THIRD_PARTY_NOTICES in the project repository.</string>
+    <string name="about_maps_body">Map data © OpenStreetMap contributors. Everyday streets use Esri World Street Map (dark theme inverts the same tiles so roads stay visible). Satellite is Esri imagery with road and place overlays; terrain is Esri World Topo. See THIRD_PARTY_NOTICES.</string>
     <string name="about_routing_heading">Routing &amp; search</string>
     <string name="about_routing_body">Driving directions use OSRM. Address search uses Nominatim. Public demo servers are for development; production should use your own or a commercial provider.</string>
     <string name="about_license">Licensed under Apache License 2.0.</string>

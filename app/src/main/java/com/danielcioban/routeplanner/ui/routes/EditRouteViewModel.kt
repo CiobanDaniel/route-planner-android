@@ -8,6 +8,7 @@ import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.RouteRepository
 import com.danielcioban.routeplanner.data.StopDraft
 import com.danielcioban.routeplanner.data.local.StopLibraryEntity
+import com.danielcioban.routeplanner.util.RouteOrderOptimizer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -161,6 +162,23 @@ class EditRouteViewModel(
             val item = mutable.removeAt(index)
             mutable.add(index + 1, item)
             state.copy(stops = mutable)
+        }
+    }
+
+    fun optimizeStopOrder() {
+        _uiState.update { state ->
+            val pinned = state.stops.count { stop ->
+                stop.latitudeText.toDoubleOrNull() != null && stop.longitudeText.toDoubleOrNull() != null
+            }
+            if (pinned < 2) {
+                return@update state.copy(errorRes = R.string.optimize_need_pins, errorArg = null)
+            }
+            val reordered = RouteOrderOptimizer.nearestNeighborOrder(
+                state.stops,
+                { it.latitudeText.toDoubleOrNull() },
+                { it.longitudeText.toDoubleOrNull() },
+            )
+            state.copy(stops = reordered, errorRes = null, errorArg = null)
         }
     }
 

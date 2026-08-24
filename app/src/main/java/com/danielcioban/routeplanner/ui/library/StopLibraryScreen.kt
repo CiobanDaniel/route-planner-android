@@ -1,6 +1,5 @@
 package com.danielcioban.routeplanner.ui.library
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -26,23 +24,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.R
+import com.danielcioban.routeplanner.data.LibraryDeleteScope
+import com.danielcioban.routeplanner.data.LibraryEditScope
+import com.danielcioban.routeplanner.data.LibraryUsage
 import com.danielcioban.routeplanner.data.local.StopLibraryEntity
+import com.danielcioban.routeplanner.ui.components.CollapsibleBottomIsland
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.components.MapAttributionChip
+import com.danielcioban.routeplanner.ui.map.LatLng
 import com.danielcioban.routeplanner.ui.map.MapViewMode
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
+import com.danielcioban.routeplanner.ui.map.libraryStopsToMapStops
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
@@ -50,15 +57,37 @@ fun StopLibraryScreen(
     viewModel: StopLibraryViewModel,
     onBack: () -> Unit,
 ) {
-    val stops by viewModel.stops.collectAsStateWithLifecycle()
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val stops = items.map { it.stop }
     var editingStop by remember { mutableStateOf<StopLibraryEntity?>(null) }
-    var deletingStop by remember { mutableStateOf<StopLibraryEntity?>(null) }
+    var pendingLibraryEdit by remember { mutableStateOf<PendingLibraryEdit?>(null) }
+    var deletingItem by remember { mutableStateOf<LibraryStopItem?>(null) }
+    var pendingPin by remember { mutableStateOf<LatLng?>(null) }
+    var newStopName by remember { mutableStateOf("") }
+    var newStopNotes by remember { mutableStateOf("") }
+    var focusTarget by remember { mutableStateOf<LatLng?>(null) }
+    var focusToken by remember { mutableIntStateOf(0) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         RouteMapBackdrop(
-            stops = emptyList(),
-            fitStops = false,
+            stops = libraryStopsToMapStops(stops),
+            fitStops = stops.isNotEmpty(),
             mapViewMode = MapViewMode.MAP,
+            showStraightStopLinks = false,
+            focusTarget = focusTarget,
+            focusToken = focusToken,
+            onMapLongClick = { pin ->
+                pendingPin = pin
+                newStopName = ""
+                newStopNotes = ""
+            },
+            onStopClick = { libraryId ->
+                items.firstOrNull { it.stop.id == libraryId }?.let { item ->
+                    focusTarget = LatLng(item.stop.latitude, item.stop.longitude)
+                    focusToken++
+                    editingStop = item.stop
+                }
+            },
         )
 
         Column(
@@ -74,7 +103,7 @@ fun StopLibraryScreen(
                 contentPadding = 12.dp,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    FloatingCircleButton(onClick = onBack) {
+                    FloatingCircleButton(onClick = onBack, embedded = true) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back),
@@ -102,14 +131,11 @@ fun StopLibraryScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            FloatingIsland(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 180.dp, max = 420.dp),
-                shape = RoundedCornerShape(28.dp),
-                contentPadding = 12.dp,
+            CollapsibleBottomIsland(
+                modifier = Modifier.fillMaxWidth(),
+                maxExpandedHeight = 420.dp,
             ) {
-                if (stops.isEmpty()) {
+                if (items.isEmpty()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -130,14 +156,19 @@ fun StopLibraryScreen(
                     }
                 } else {
                     LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(stops, key = { it.id }) { stop ->
+                        items(items, key = { it.stop.id }) { item ->
                             LibraryStopRow(
-                                stop = stop,
-                                onEdit = { editingStop = stop },
-                                onDelete = { deletingStop = stop },
+                                item = item,
+                                onEdit = {
+                                    focusTarget = LatLng(item.stop.latitude, item.stop.longitude)
+                                    focusToken++
+                                    editingStop = item.stop
+                                },
+                                onDelete = { deletingItem = item },
                             )
                         }
                     }
@@ -145,46 +176,135 @@ fun StopLibraryScreen(
             }
         }
 
+        pendingPin?.let { pin ->
+            com.danielcioban.routeplanner.ui.routes.AddStopFromPinDialog(
+                pin = com.danielcioban.routeplanner.ui.routes.PendingStopPin(
+                    latitude = pin.latitude,
+                    longitude = pin.longitude,
+                ),
+                name = newStopName,
+                onNameChange = { newStopName = it },
+                notes = newStopNotes,
+                onNotesChange = { newStopNotes = it },
+                onDismiss = { pendingPin = null },
+                onConfirm = {
+                    viewModel.create(
+                        name = newStopName,
+                        addressHint = "",
+                        notes = newStopNotes,
+                        latitude = pin.latitude,
+                        longitude = pin.longitude,
+                    )
+                    pendingPin = null
+                },
+            )
+        }
+
         editingStop?.let { stop ->
             EditLibraryStopDialog(
                 stop = stop,
                 onDismiss = { editingStop = null },
                 onSave = { name, addressHint, notes, latitude, longitude ->
-                    viewModel.update(
-                        id = stop.id,
-                        name = name,
-                        addressHint = addressHint,
-                        notes = notes,
-                        latitude = latitude,
-                        longitude = longitude,
-                    )
+                    val item = items.firstOrNull { it.stop.id == stop.id }
+                    if (item != null && item.usedOn.size > 1) {
+                        pendingLibraryEdit = PendingLibraryEdit(
+                            stopId = stop.id,
+                            name = name,
+                            addressHint = addressHint,
+                            notes = notes,
+                            latitude = latitude,
+                            longitude = longitude,
+                            usage = LibraryUsage(
+                                libraryStopId = stop.id,
+                                routes = emptyList(),
+                            ),
+                            routeNames = item.usedOn,
+                        )
+                    } else {
+                        viewModel.applyEdit(
+                            id = stop.id,
+                            name = name,
+                            addressHint = addressHint,
+                            notes = notes,
+                            latitude = latitude,
+                            longitude = longitude,
+                            scope = LibraryEditScope.Global,
+                        )
+                    }
+                    editingStop = null
                 },
             )
         }
 
-        deletingStop?.let { stop ->
-            DeleteLibraryStopDialog(
-                stopName = stop.name,
-                onDismiss = { deletingStop = null },
-                onConfirm = { viewModel.delete(stop.id) },
+        pendingLibraryEdit?.let { edit ->
+            LibraryEditScopeDialog(
+                stopName = edit.name,
+                routeNames = edit.routeNames,
+                showThisRoute = false,
+                onEverywhere = {
+                    viewModel.applyEdit(
+                        id = edit.stopId,
+                        name = edit.name,
+                        addressHint = edit.addressHint,
+                        notes = edit.notes,
+                        latitude = edit.latitude,
+                        longitude = edit.longitude,
+                        scope = LibraryEditScope.Global,
+                    )
+                    pendingLibraryEdit = null
+                },
+                onThisRoute = { pendingLibraryEdit = null },
+                onSaveAsCopy = {
+                    viewModel.applyEdit(
+                        id = edit.stopId,
+                        name = edit.name,
+                        addressHint = edit.addressHint,
+                        notes = edit.notes,
+                        latitude = edit.latitude,
+                        longitude = edit.longitude,
+                        scope = LibraryEditScope.SaveAsCopy,
+                    )
+                    pendingLibraryEdit = null
+                },
+                onDismiss = { pendingLibraryEdit = null },
+            )
+        }
+
+        deletingItem?.let { item ->
+            LibraryDeleteScopeDialog(
+                stopName = item.stop.name,
+                routeNames = item.usedOn,
+                showThisRoute = false,
+                onEverywhere = {
+                    viewModel.delete(item.stop.id, LibraryDeleteScope.Everywhere)
+                    deletingItem = null
+                },
+                onThisRoute = { deletingItem = null },
+                onDismiss = { deletingItem = null },
             )
         }
     }
 }
 
+private data class PendingLibraryEdit(
+    val stopId: Long,
+    val name: String,
+    val addressHint: String,
+    val notes: String,
+    val latitude: Double,
+    val longitude: Double,
+    val usage: LibraryUsage,
+    val routeNames: List<String>,
+)
+
 @Composable
 private fun LibraryStopRow(
-    stop: StopLibraryEntity,
+    item: LibraryStopItem,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onEdit)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val stop = item.stop
+    IslandListItem(onClick = onEdit) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = stop.name,
@@ -212,13 +332,23 @@ private fun LibraryStopRow(
                 )
             }
             Text(
-                text = stringResource(
-                    R.string.dialog_pinned_coords,
-                    stop.latitude,
-                    stop.longitude,
-                ),
+                text = if (item.usedOn.isEmpty()) {
+                    stringResource(R.string.library_usage_none)
+                } else {
+                    pluralStringResource(
+                        R.plurals.library_usage_count,
+                        item.usedOn.size,
+                        item.usedOn.size,
+                    ) + " · " + item.usedOn.joinToString(", ")
+                },
                 style = MaterialTheme.typography.labelSmall,
-                color = IslandColors.onSurfaceMuted,
+                color = if (item.usedOn.isEmpty()) {
+                    IslandColors.onSurfaceMuted
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         IconButton(onClick = onDelete) {

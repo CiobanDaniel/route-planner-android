@@ -15,6 +15,12 @@ interface StopLibraryDao {
     @Query("SELECT * FROM stop_library WHERE id = :id")
     suspend fun getById(id: Long): StopLibraryEntity?
 
+    @Query("SELECT * FROM stop_library WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getByRemoteId(remoteId: String): StopLibraryEntity?
+
+    @Query("SELECT * FROM stop_library ORDER BY name COLLATE NOCASE ASC")
+    suspend fun getAll(): List<StopLibraryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(stop: StopLibraryEntity): Long
 

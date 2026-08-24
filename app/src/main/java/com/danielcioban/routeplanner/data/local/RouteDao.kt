@@ -22,6 +22,18 @@ interface RouteDao {
     @Query("SELECT * FROM routes WHERE id = :routeId")
     suspend fun getRoute(routeId: Long): RouteWithStops?
 
+    @Query("SELECT * FROM routes WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getRouteByRemoteId(remoteId: String): RouteEntity?
+
+    @Query("SELECT * FROM stops WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getStopByRemoteId(remoteId: String): StopEntity?
+
+    @Query("SELECT * FROM routes ORDER BY updatedAtEpochMs DESC")
+    suspend fun getAllRoutes(): List<RouteEntity>
+
+    @Query("SELECT * FROM stops WHERE routeId = :routeId ORDER BY position ASC")
+    suspend fun getStopsForRoute(routeId: Long): List<StopEntity>
+
     @Insert
     suspend fun insertRoute(route: RouteEntity): Long
 
@@ -60,4 +72,37 @@ interface RouteDao {
 
     @Query("UPDATE routes SET updatedAtEpochMs = :updatedAt WHERE id = :routeId")
     suspend fun touchRoute(routeId: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query(
+        """
+        SELECT DISTINCT routes.* FROM routes
+        INNER JOIN stops ON stops.routeId = routes.id
+        WHERE stops.libraryStopId = :libraryStopId
+        ORDER BY routes.name COLLATE NOCASE ASC
+        """,
+    )
+    suspend fun getRoutesUsingLibraryStop(libraryStopId: Long): List<RouteEntity>
+
+    @Query("SELECT * FROM stops WHERE libraryStopId = :libraryStopId")
+    suspend fun getStopsWithLibraryId(libraryStopId: Long): List<StopEntity>
+
+    @Query(
+        """
+        UPDATE stops SET
+            name = :name,
+            addressHint = :addressHint,
+            notes = :notes,
+            latitude = :latitude,
+            longitude = :longitude
+        WHERE libraryStopId = :libraryStopId
+        """,
+    )
+    suspend fun propagateLibraryPlace(
+        libraryStopId: Long,
+        name: String,
+        addressHint: String,
+        notes: String,
+        latitude: Double,
+        longitude: Double,
+    )
 }

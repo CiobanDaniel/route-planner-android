@@ -1,23 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>Route Planner map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
     <style>
-        html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #d9e2ec; }
-        .leaflet-container { background: #d9e2ec; }
-        .leaflet-tile-container img { image-rendering: -webkit-optimize-contrast; }
-        .leaflet-control-attribution { font-size: 10px; opacity: 0.75; }
+        html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #dfe6ee; }
+        .leaflet-container { background: #dfe6ee; }
+        body.theme-dark, body.theme-dark .leaflet-container { background: #161c24; }
+        /* Tiles only — never filter markers / nav line / satellite.
+           Map + Driving use Esri World Street Map (dark-gray roads).
+           Dark theme inverts those street tiles so roads stay light on land. */
+        body.driving-style.style-streets:not(.theme-dark) .leaflet-tile-pane {
+            filter: contrast(1.18) saturate(1.1);
+        }
+        body.theme-dark.style-streets .leaflet-tile-pane {
+            filter: invert(0.88) hue-rotate(180deg) brightness(1.06) contrast(1.18) saturate(0.55);
+        }
+        .leaflet-tile-container img { image-rendering: auto; }
+        .leaflet-control-attribution { display: none; }
+        .leaflet-tooltip {
+            background: rgba(21, 32, 51, 0.92);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+            font: 600 12px/1.2 system-ui, sans-serif;
+            padding: 5px 8px;
+        }
+        .leaflet-tooltip-top:before { border-top-color: rgba(21, 32, 51, 0.92); }
         .stop-marker {
             background: #E86A17;
             border: 2px solid #fff;
             border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+            width: 22px;
+            height: 22px;
+            color: #fff;
+            font: 700 11px/18px system-ui, sans-serif;
+            text-align: center;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+        .stop-marker.done {
+            background: #2F8A57;
         }
         .user-marker-wrap { background: transparent; border: none; }
         .user-dot {
@@ -51,7 +78,7 @@
 
     var map = L.map('map', {
         zoomControl: false,
-        attributionControl: true,
+        attributionControl: false,
         preferCanvas: true,
         renderer: vectorRenderer,
         // Animated zoom + rotate often desyncs overlays mid-gesture.
@@ -64,45 +91,93 @@
         rotateControl: false
     }).setView([20, 0], 2);
 
-    var baseLayers = {
-        map: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
-            subdomains: 'abcd',
-            maxZoom: 20,
-            maxNativeZoom: 20,
-            detectRetina: true,
-            updateWhenZooming: false,
-            keepBuffer: 2
-        }),
-        driving: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri',
-            maxZoom: 19,
-            maxNativeZoom: 19,
-            detectRetina: true,
-            updateWhenZooming: false,
-            keepBuffer: 2
-        }),
-        satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri',
-            maxZoom: 19,
-            maxNativeZoom: 19,
-            detectRetina: true,
-            updateWhenZooming: false,
-            keepBuffer: 2
-        }),
-        terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap, SRTM | OpenTopoMap',
-            subdomains: 'abc',
-            maxZoom: 17,
-            maxNativeZoom: 17,
-            detectRetina: true,
-            updateWhenZooming: false,
-            keepBuffer: 2
-        })
+    var TILE_OPTS = {
+        detectRetina: false,
+        updateWhenZooming: false,
+        updateWhenIdle: true,
+        keepBuffer: 2
     };
 
-    var currentBase = baseLayers.map;
-    currentBase.addTo(map);
+    var mapTheme = 'light';
+    var currentStyleId = 'map';
+    var currentBase = null;
+    var baseLayers = {};
+
+    function streetLayer() {
+        // Same tiles in light and dark. Dark contrast comes from CSS invert on .style-streets.
+        return L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            Object.assign({
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19,
+                maxNativeZoom: 19
+            }, TILE_OPTS)
+        );
+    }
+
+    function syncBodyClasses() {
+        document.body.classList.toggle('theme-dark', mapTheme === 'dark');
+        document.body.classList.toggle('style-streets', currentStyleId === 'map' || currentStyleId === 'driving');
+        document.body.classList.toggle('driving-style', currentStyleId === 'driving');
+    }
+
+    function esriLayer(service, extra) {
+        return L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/' + service + '/MapServer/tile/{z}/{y}/{x}',
+            Object.assign({
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19,
+                maxNativeZoom: 19
+            }, TILE_OPTS, extra || {})
+        );
+    }
+
+    function buildBaseLayers() {
+        var streets = streetLayer();
+        return {
+            map: L.layerGroup([streets]),
+            driving: L.layerGroup([streetLayer()]),
+            satellite: L.layerGroup([
+                esriLayer('World_Imagery'),
+                esriLayer('Reference/World_Transportation', { opacity: 0.88, maxZoom: 19 }),
+                esriLayer('Reference/World_Boundaries_and_Places', { opacity: 0.95, maxZoom: 19 })
+            ]),
+            terrain: L.layerGroup([esriLayer('World_Topo_Map')])
+        };
+    }
+
+    function bringOverlaysFront() {
+        if (markersLayer) markersLayer.bringToFront();
+        if (lineLayer) lineLayer.bringToFront();
+        if (navLayer) navLayer.bringToFront();
+        if (userMarker) userMarker.setZIndexOffset(1000);
+    }
+
+    function setMapStyle(styleId) {
+        currentStyleId = styleId || 'map';
+        syncBodyClasses();
+        var next = baseLayers[currentStyleId] || baseLayers.map;
+        if (next === currentBase) return;
+        if (currentBase) map.removeLayer(currentBase);
+        currentBase = next;
+        currentBase.addTo(map);
+        bringOverlaysFront();
+    }
+
+    function setMapTheme(theme) {
+        var next = (theme === 'dark') ? 'dark' : 'light';
+        if (next === mapTheme && currentBase) return;
+        mapTheme = next;
+        syncBodyClasses();
+        var prev = currentStyleId;
+        if (currentBase) map.removeLayer(currentBase);
+        baseLayers = buildBaseLayers();
+        currentBase = null;
+        setMapStyle(prev);
+    }
+
+    baseLayers = buildBaseLayers();
+    setMapStyle('map');
 
     var markersLayer = L.layerGroup().addTo(map);
     var lineLayer = L.layerGroup().addTo(map);
@@ -157,9 +232,8 @@
     }
 
     function onMapRotated() {
-        // leaflet-rotate bakes map bearing into the marker pane transform.
-        // Recompute the tip as (phoneHeading - mapBearing) whenever the map
-        // rotates, or the triangle tracks the map gesture instead of the phone.
+        // Marker pane is screen-fixed; recompute tip vs current map bearing
+        // so a two-finger map twist does not drag the chevron with the tiles.
         updateUserMarkerVisual();
         redrawVectors();
     }
@@ -183,36 +257,17 @@
         if (e.touches.length >= 2) beginGesture();
     }, { passive: true });
 
-    function pointAhead(latlng, bearingDeg, distanceMeters) {
-        var R = 6378137;
-        var br = (bearingDeg || 0) * Math.PI / 180;
-        var lat1 = latlng.lat * Math.PI / 180;
-        var lon1 = latlng.lng * Math.PI / 180;
-        var ang = distanceMeters / R;
-        var lat2 = Math.asin(Math.sin(lat1) * Math.cos(ang) + Math.cos(lat1) * Math.sin(ang) * Math.cos(br));
-        var lon2 = lon1 + Math.atan2(
-            Math.sin(br) * Math.sin(ang) * Math.cos(lat1),
-            Math.cos(ang) - Math.sin(lat1) * Math.sin(lat2)
-        );
-        return L.latLng(lat2 * 180 / Math.PI, lon2 * 180 / Math.PI);
-    }
-
-    function setMapStyle(styleId) {
-        var next = baseLayers[styleId] || baseLayers.map;
-        if (next === currentBase) return;
-        map.removeLayer(currentBase);
-        currentBase = next;
-        currentBase.addTo(map);
-        markersLayer.bringToFront();
-        lineLayer.bringToFront();
-        navLayer.bringToFront();
-        if (userMarker) userMarker.setZIndexOffset(1000);
+    function leafletBearingFromHeading(headingDeg) {
+        // leaflet-rotate's setBearing is opposite Android/GPS clockwise-from-north.
+        // Invert only here so the CSS chevron can use geographic heading.
+        if (!Number.isFinite(headingDeg)) return 0;
+        return (360 - headingDeg) % 360;
     }
 
     function applyMapBearing() {
         // Avoid truthiness check — bearing 0 (north) is valid and must still be applied.
         if (typeof map.setBearing === 'function' && Number.isFinite(lastBearing)) {
-            map.setBearing(lastBearing);
+            map.setBearing(leafletBearingFromHeading(lastBearing));
         }
     }
 
@@ -242,8 +297,7 @@
         notifyFollowPaused(false);
         if (driveFollow && lastUserLatLng) {
             applyMapBearing();
-            var ahead = pointAhead(lastUserLatLng, lastBearing || 0, 55);
-            map.setView(ahead, Math.max(map.getZoom(), 17), { animate: false });
+            map.setView(lastUserLatLng, Math.max(map.getZoom(), 17), { animate: false });
             applyMapBearing();
             updateUserMarkerVisual();
         }
@@ -260,13 +314,14 @@
             tip.style.transform = '';
             return;
         }
-        // leaflet-rotate puts markerPane on norotatePane (screen-fixed).
-        // Tip angle = phone heading relative to map bearing (CSS clockwise).
+        // Marker pane is screen-fixed (norotatePane). Screen-up is the
+        // geographic heading leaflet is showing at the top: (360 - mapBearing).
+        // CSS clockwise from screen-up = heading - screenUp = heading + mapBearing.
         var mapBearing = 0;
         if (typeof map.getBearing === 'function') {
             mapBearing = map.getBearing() || 0;
         }
-        var angle = (lastBearing - mapBearing + 360) % 360;
+        var angle = (lastBearing + mapBearing + 360) % 360;
         tip.style.transform = 'rotate(' + angle + 'deg)';
     }
 
@@ -354,19 +409,16 @@
             followPaused = false;
             notifyFollowPaused(false);
             var targetZoom = driveFollow ? Math.max(map.getZoom(), 17) : Math.max(map.getZoom(), 15);
-            var flyTarget = driveFollow
-                ? pointAhead(latlng, lastBearing || 0, 55)
-                : latlng;
-            map.setView(flyTarget, targetZoom, { animate: false });
+            map.setView(latlng, targetZoom, { animate: false });
             hasCenteredOnUser = true;
             if (driveFollow) applyMapBearing();
         } else if (driveFollow && !followPaused && gestureDepth === 0) {
             // Rotate on every heading update; only pan when the user actually moved.
+            // Center on the user — look-ahead made leaflet-rotate pivot off the marker.
             // Animated panTo was racing setBearing and snapping the camera north.
             applyMapBearing();
             if (moved) {
-                var ahead = pointAhead(latlng, lastBearing || 0, 55);
-                map.setView(ahead, Math.max(map.getZoom(), 17), { animate: false });
+                map.setView(latlng, Math.max(map.getZoom(), 17), { animate: false });
                 applyMapBearing();
             }
             hasCenteredOnUser = true;
@@ -477,11 +529,15 @@
             var name = feature.properties.name || '';
             bounds.push([lat, lon]);
 
+            var completed = !!feature.properties.completed;
+            var seq = (typeof feature.properties.position === 'number'
+                ? feature.properties.position
+                : 0) + 1;
             var icon = L.divIcon({
                 className: '',
-                html: '<div class="stop-marker"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                html: '<div class="stop-marker' + (completed ? ' done' : '') + '">' + seq + '</div>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
             });
             var marker = L.marker([lat, lon], { icon: icon });
             marker.bindTooltip(name, { direction: 'top', offset: [0, -10] });
@@ -505,6 +561,7 @@
     window.clearNavRoute = clearNavRoute;
     window.setUserLocation = setUserLocation;
     window.setMapStyle = setMapStyle;
+    window.setMapTheme = setMapTheme;
     window.setDriveFollow = setDriveFollow;
     window.resumeDriveFollow = resumeDriveFollow;
 </script>

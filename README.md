@@ -2,7 +2,7 @@
 
 Multi-stop route planning for deliveries. Package: `com.danielcioban.routeplanner`.
 
-Current app version: **0.3.1**
+Current app version: **0.4.0**
 
 ## Quick start
 
@@ -20,16 +20,18 @@ CLI (JDK 21 on `PATH` / `JAVA_HOME`):
 
 On Windows: `gradlew.bat …`
 
-## Features (0.3)
+## Features (0.4)
 
-- Map background (Leaflet + OSM tiles in a WebView)
+- Map background (Leaflet + OSM/Esri tiles in a WebView)
 - Floating island UI; create / edit / delete routes and stops
 - Long-press map, GPS, or **address search** to add stops
+- **Stop library** as the canonical stop list; routes reference shared stops
+- Per-stop **task checklists** (required tasks gate completion)
 - Delivery mode with OSRM turn-by-turn + straight-line fallback
-- Open in Google Maps / Waze; share route as text
-- Resume delivery session; reset progress
-- Settings: theme, EN/RO, metric/imperial, keep screen on
-- Local Room storage
+- Open in Google Maps / Waze; share route as text; duplicate and filter routes
+- Resume delivery session; reset progress; optimize stop order
+- JSON backup export/import; settings: theme, EN/RO, units, keep screen on
+- Local Room storage (no cloud sync yet)
 
 ## Stack
 

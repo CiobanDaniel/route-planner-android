@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.danielcioban.routeplanner.data.local.StopEntity
+import com.danielcioban.routeplanner.ui.theme.IslandColors
 import org.json.JSONObject
 
 private const val EMPTY_LINE_GEOJSON = """{"type":"FeatureCollection","features":[]}"""
@@ -73,6 +74,7 @@ private class MapWebState {
     var lastUser: LatLng? = null
     var lastRecenterToken: Int = -1
     var lastStyleId: String = MapViewMode.MAP.id
+    var lastThemeDark: Boolean? = null
     var lastDriveFollow: Boolean = false
     var lastNavLine: String? = null
     var lastNavFitToken: Int = 0
@@ -82,6 +84,7 @@ private class MapWebState {
     var pushedFocusToken: Int = -1
 
     var pushedStyleId: String? = null
+    var pushedThemeDark: Boolean? = null
     var pushedDriveFollow: Boolean? = null
     var pushedRouteSignature: String? = null
     var fittedRouteSignature: String? = null
@@ -91,7 +94,7 @@ private class MapWebState {
     var hasFlownToUser: Boolean = false
 }
 
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
 fun RouteMapBackdrop(
     modifier: Modifier = Modifier,
@@ -117,6 +120,7 @@ fun RouteMapBackdrop(
     }
     val bridge = remember { MapJsBridge(Handler(Looper.getMainLooper())) }
     val webState = remember { MapWebState() }
+    val darkBasemap = !IslandColors.useHighlightShadow
     bridge.onMapLongClick = onMapLongClick
     bridge.onStopClick = onStopClick
     bridge.onFollowPaused = onFollowPaused
@@ -145,6 +149,7 @@ fun RouteMapBackdrop(
                     override fun onPageFinished(view: WebView?, url: String?) {
                         webState.pageReady = true
                         webState.pushedStyleId = null
+                        webState.pushedThemeDark = null
                         webState.pushedDriveFollow = null
                         webState.pushedRouteSignature = null
                         webState.fittedRouteSignature = null
@@ -172,6 +177,7 @@ fun RouteMapBackdrop(
             webState.lastFitRequested = fitStops
             webState.lastUser = userLocation
             webState.lastStyleId = mapViewMode.id
+            webState.lastThemeDark = darkBasemap
             webState.lastDriveFollow = driveFollow
             webState.lastNavLine = navRouteLineJson
             webState.lastNavFitToken = navRouteFitToken
@@ -187,6 +193,17 @@ fun RouteMapBackdrop(
 
 private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boolean) {
     if (webView == null || !state.pageReady) return
+
+    if (state.pushedThemeDark != state.lastThemeDark) {
+        val theme = if (state.lastThemeDark == true) "dark" else "light"
+        webView.evaluateJavascript(
+            "window.setMapTheme && setMapTheme(${JSONObject.quote(theme)});",
+            null,
+        )
+        state.pushedThemeDark = state.lastThemeDark
+        // Street tiles are rebuilt in JS; re-push style next.
+        state.pushedStyleId = null
+    }
 
     if (state.pushedStyleId != state.lastStyleId) {
         webView.evaluateJavascript(
@@ -211,7 +228,7 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
         routeChanged &&
         state.fittedRouteSignature != routeSignature
 
-    if (routeChanged || shouldFit) {
+    if (routeChanged) {
         pushRoute(webView, state.lastPoints, state.lastLine, fitStops = shouldFit)
         state.pushedRouteSignature = routeSignature
         if (shouldFit) {

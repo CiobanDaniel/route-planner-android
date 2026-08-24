@@ -77,7 +77,8 @@ class OsrmRoutingClient(
                     else -> ""
                 }
                 steps += ManeuverStep(
-                    instruction = formatInstruction(type, modifier, road),
+                    // Display uses [ManeuverFormatter] with type/modifier/name — not this field.
+                    instruction = "",
                     type = type,
                     modifier = modifier,
                     name = road,
@@ -102,58 +103,5 @@ class OsrmRoutingClient(
             .readTimeout(12, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)
             .build()
-
-        fun formatInstruction(type: String, modifier: String?, road: String): String {
-            val onto = if (road.isNotBlank()) " onto $road" else ""
-            val mod = modifier?.replace('-', ' ').orEmpty()
-            return when (type) {
-                "depart" -> if (road.isNotBlank()) "Head out on $road" else "Head out"
-                "arrive" -> "Arrive at destination"
-                "new name" -> if (road.isNotBlank()) "Continue on $road" else "Continue"
-                "notification" -> "Continue"
-                "roundabout", "rotary" -> {
-                    val exit = if (mod.isNotBlank()) " ($mod)" else ""
-                    "Enter roundabout$exit$onto"
-                }
-                "merge" -> "Merge$onto"
-                "fork" -> when (modifier) {
-                    "left" -> "Keep left$onto"
-                    "right" -> "Keep right$onto"
-                    "slight left" -> "Keep left$onto"
-                    "slight right" -> "Keep right$onto"
-                    else -> "At fork$onto"
-                }
-                "end of road" -> when (modifier) {
-                    "left" -> "Turn left at end of road$onto"
-                    "right" -> "Turn right at end of road$onto"
-                    else -> "At end of road$onto"
-                }
-                "continue" -> when (modifier) {
-                    "uturn", "u-turn" -> "Make a U-turn$onto"
-                    else -> if (road.isNotBlank()) "Continue on $road" else "Continue"
-                }
-                "turn", "ramp", "on ramp", "off ramp", "exit roundabout", "exit rotary" -> {
-                    val action = when (modifier) {
-                        "uturn", "u-turn" -> "Make a U-turn"
-                        "sharp left" -> "Turn sharp left"
-                        "sharp right" -> "Turn sharp right"
-                        "left" -> "Turn left"
-                        "right" -> "Turn right"
-                        "slight left" -> "Turn slight left"
-                        "slight right" -> "Turn slight right"
-                        "straight" -> "Continue straight"
-                        else -> if (mod.isNotBlank()) "Turn $mod" else "Continue"
-                    }
-                    "$action$onto"
-                }
-                else -> {
-                    val action = when {
-                        mod.isNotBlank() -> mod.replaceFirstChar { it.uppercase() }
-                        else -> type.replaceFirstChar { it.uppercase() }
-                    }
-                    "$action$onto"
-                }
-            }
-        }
     }
 }

@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.danielcioban.routeplanner.ui.theme.IslandColors
@@ -40,11 +42,7 @@ fun FloatingIsland(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val palette = LocalIslandColors.current
-    val borderColor = if (palette.useHighlightShadow) {
-        palette.lightShadow.copy(alpha = 0.65f)
-    } else {
-        palette.fieldBorder.copy(alpha = 0.45f)
-    }
+    val borderColor = palette.fieldBorder.copy(alpha = if (palette.useHighlightShadow) 0.72f else 0.7f)
     Box(
         modifier = modifier
             .graphicsLayer { clip = false }
@@ -52,6 +50,7 @@ fun FloatingIsland(
             .clip(shape)
             .background(containerColor)
             .border(width = 1.dp, color = borderColor, shape = shape)
+            .blockMapPassThrough()
             .padding(contentPadding),
         content = content,
     )
@@ -61,8 +60,24 @@ fun FloatingIsland(
 fun FloatingCircleButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    embedded: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    if (embedded) {
+        Box(
+            modifier = modifier
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                )
+                .padding(10.dp),
+            contentAlignment = Alignment.Center,
+            content = content,
+        )
+        return
+    }
     FloatingIsland(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
@@ -80,6 +95,19 @@ fun FloatingCircleButton(
             contentAlignment = Alignment.Center,
             content = content,
         )
+    }
+}
+
+/**
+ * Makes this node a hit target so an [android.webkit.WebView] map behind it does not
+ * receive the same pan/zoom gestures. Do not consume: nested scroll (lists) needs the
+ * slop window, and children (buttons, fields) still win hit-testing first.
+ */
+fun Modifier.blockMapPassThrough(): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            awaitPointerEvent(PointerEventPass.Initial)
+        }
     }
 }
 

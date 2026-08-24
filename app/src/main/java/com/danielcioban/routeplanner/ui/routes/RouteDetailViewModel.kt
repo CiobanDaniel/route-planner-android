@@ -6,12 +6,18 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.AddFromLibraryResult
+import com.danielcioban.routeplanner.data.LibraryDeleteScope
+import com.danielcioban.routeplanner.data.LibraryEditScope
+import com.danielcioban.routeplanner.data.LibraryUsage
 import com.danielcioban.routeplanner.data.RouteRepository
+import com.danielcioban.routeplanner.data.StopCompletionResult
 import com.danielcioban.routeplanner.data.StopDraft
 import com.danielcioban.routeplanner.data.delivery.DeliverySessionStore
 import com.danielcioban.routeplanner.data.local.RouteWithStops
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.data.local.StopLibraryEntity
+import com.danielcioban.routeplanner.data.local.StopTaskEntity
+import com.danielcioban.routeplanner.data.local.StopTaskProgress
 import com.danielcioban.routeplanner.data.routing.DrivingRoute
 import com.danielcioban.routeplanner.data.routing.NavGuidance
 import com.danielcioban.routeplanner.data.routing.NavigationProgress
@@ -19,11 +25,15 @@ import com.danielcioban.routeplanner.data.routing.OsrmRoutingClient
 import com.danielcioban.routeplanner.ui.map.LatLng
 import com.danielcioban.routeplanner.util.GeoUtils
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -61,6 +71,7 @@ data class NavigationUiState(
     val navFitToken: Int = 0,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RouteDetailViewModel(
     private val repository: RouteRepository,
     private val routeId: Long,
@@ -89,6 +100,17 @@ class RouteDetailViewModel(
 
     private val _selectedStopId = MutableStateFlow<Long?>(null)
     val selectedStopId: StateFlow<Long?> = _selectedStopId.asStateFlow()
+
+    val selectedStopTasks: StateFlow<List<StopTaskEntity>> = selectedStopId
+        .flatMapLatest { stopId ->
+            if (stopId == null) flowOf(emptyList()) else repository.observeStopTasks(stopId)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val taskProgressByStopId: StateFlow<Map<Long, StopTaskProgress>> =
+        repository.observeStopTaskProgress(routeId)
+            .map { list -> list.associateBy { it.stopId } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _navigation = MutableStateFlow(NavigationUiState())
     val navigation: StateFlow<NavigationUiState> = _navigation.asStateFlow()
@@ -158,21 +180,11 @@ class RouteDetailViewModel(
         _pendingPin.value = null
     }
 
-    fun confirmPendingStop(name: String, notes: String = "", alsoSaveToLibrary: Boolean = false) {
+    fun confirmPendingStop(name: String, notes: String = "") {
         val pin = _pendingPin.value ?: return
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         viewModelScope.launch {
-            var libraryId: Long? = null
-            if (alsoSaveToLibrary) {
-                libraryId = repository.upsertLibraryStop(
-                    name = trimmed,
-                    addressHint = pin.addressHint.trim(),
-                    notes = notes.trim(),
-                    latitude = pin.latitude,
-                    longitude = pin.longitude,
-                )
-            }
             repository.addStop(
                 routeId,
                 StopDraft(
@@ -181,7 +193,6 @@ class RouteDetailViewModel(
                     addressHint = pin.addressHint.trim(),
                     latitude = pin.latitude,
                     longitude = pin.longitude,
-                    libraryStopId = libraryId,
                 ),
             )
             _pendingPin.value = null
@@ -237,22 +248,55 @@ class RouteDetailViewModel(
         name: String,
         notes: String,
         addressHint: String = "",
+        scope: LibraryEditScope = LibraryEditScope.Global,
     ) {
         viewModelScope.launch {
             val existing = route.value?.orderedStops?.firstOrNull { it.id == stopId } ?: return@launch
-            repository.updateStop(
-                existing.copy(
-                    name = name.trim().ifEmpty { existing.name },
-                    notes = notes.trim(),
-                    addressHint = addressHint.trim(),
-                ),
-            )
+            val trimmedName = name.trim().ifEmpty { existing.name }
+            val trimmedNotes = notes.trim()
+            val lat = existing.latitude
+            val lng = existing.longitude
+            val libraryId = existing.libraryStopId
+            if (libraryId != null && lat != null && lng != null) {
+                repository.applyLibraryPlaceEdit(
+                    libraryStopId = libraryId,
+                    name = trimmedName,
+                    addressHint = addressHint.trim().ifEmpty { existing.addressHint },
+                    notes = trimmedNotes,
+                    latitude = lat,
+                    longitude = lng,
+                    scope = scope,
+                    routeStopId = stopId,
+                )
+            } else {
+                repository.updateStop(
+                    existing.copy(
+                        name = trimmedName,
+                        notes = trimmedNotes,
+                        addressHint = addressHint.trim(),
+                    ),
+                )
+            }
         }
     }
 
-    fun deleteStop(stopId: Long) {
+    fun deleteStop(
+        stopId: Long,
+        scope: LibraryDeleteScope = LibraryDeleteScope.ThisRouteOnly,
+    ) {
         viewModelScope.launch {
-            repository.deleteStop(stopId, routeId)
+            val existing = route.value?.orderedStops?.firstOrNull { it.id == stopId }
+            val libraryId = existing?.libraryStopId
+            if (libraryId != null) {
+                repository.deleteLibraryStop(
+                    id = libraryId,
+                    scope = scope,
+                    routeStopId = stopId,
+                    routeId = routeId,
+                )
+            } else {
+                repository.deleteStop(stopId, routeId)
+            }
             if (_selectedStopId.value == stopId) {
                 _selectedStopId.value = null
             }
@@ -267,7 +311,7 @@ class RouteDetailViewModel(
             repository.addStop(
                 routeId,
                 StopDraft(
-                    name = name.trim().ifEmpty { "GPS stop" },
+                    name = name.trim(),
                     latitude = latitude,
                     longitude = longitude,
                 ),
@@ -277,8 +321,40 @@ class RouteDetailViewModel(
 
     fun setStopCompleted(stopId: Long, completed: Boolean) {
         viewModelScope.launch {
-            repository.setStopCompleted(stopId, completed)
+            when (repository.setStopCompleted(stopId, completed)) {
+                is StopCompletionResult.BlockedByRequiredTasks -> {
+                    _noticeMessageRes.value = R.string.tasks_required_before_stop_complete
+                }
+                else -> Unit
+            }
         }
+    }
+
+    fun addSelectedStopTask(title: String, required: Boolean) {
+        val stopId = _selectedStopId.value ?: return
+        viewModelScope.launch { repository.addStopTask(stopId, title, required) }
+    }
+
+    fun loadLibraryUsage(libraryStopId: Long, onResult: (LibraryUsage) -> Unit) {
+        viewModelScope.launch {
+            onResult(repository.getLibraryUsage(libraryStopId))
+        }
+    }
+
+    fun updateStopTask(taskId: Long, title: String, required: Boolean) {
+        viewModelScope.launch { repository.updateStopTask(taskId, title, required) }
+    }
+
+    fun setStopTaskCompleted(taskId: Long, completed: Boolean, note: String) {
+        viewModelScope.launch { repository.setStopTaskCompleted(taskId, completed, note) }
+    }
+
+    fun updateStopTaskCompletionNote(taskId: Long, note: String) {
+        viewModelScope.launch { repository.updateStopTaskCompletionNote(taskId, note) }
+    }
+
+    fun deleteStopTask(taskId: Long) {
+        viewModelScope.launch { repository.deleteStopTask(taskId) }
     }
 
     fun moveStopUp(stopId: Long) {
@@ -293,6 +369,21 @@ class RouteDetailViewModel(
         }
     }
 
+    fun optimizeStopOrder(userLocation: LatLng? = lastUserFix) {
+        viewModelScope.launch {
+            val changed = repository.optimizeStopOrder(
+                routeId,
+                startLatitude = userLocation?.latitude,
+                startLongitude = userLocation?.longitude,
+            )
+            _noticeMessageRes.value = if (changed) {
+                R.string.optimize_done
+            } else {
+                R.string.optimize_unchanged
+            }
+        }
+    }
+
     /**
      * Mark every unfinished stop before [stopId] as done, then navigate to that stop.
      */
@@ -304,7 +395,14 @@ class RouteDetailViewModel(
             for (stop in stops) {
                 if (stop.id == target.id) break
                 if (!stop.isCompleted) {
-                    repository.setStopCompleted(stop.id, true)
+                    when (repository.setStopCompleted(stop.id, true)) {
+                        StopCompletionResult.Updated -> Unit
+                        is StopCompletionResult.BlockedByRequiredTasks -> {
+                            _noticeMessageRes.value = R.string.tasks_required_before_stop_complete
+                            return@launch
+                        }
+                        StopCompletionResult.StopMissing -> return@launch
+                    }
                 }
             }
             val fix = userLocation ?: lastUserFix
@@ -326,7 +424,14 @@ class RouteDetailViewModel(
         val stops = route.value?.orderedStops.orEmpty()
         val next = stops.firstOrNull { !it.isCompleted } ?: return
         viewModelScope.launch {
-            repository.setStopCompleted(next.id, true)
+            when (repository.setStopCompleted(next.id, true)) {
+                StopCompletionResult.Updated -> Unit
+                is StopCompletionResult.BlockedByRequiredTasks -> {
+                    _noticeMessageRes.value = R.string.tasks_required_before_stop_complete
+                    return@launch
+                }
+                StopCompletionResult.StopMissing -> return@launch
+            }
             if (!_deliveryActive.value) {
                 stopNavigation()
                 return@launch

@@ -61,11 +61,9 @@ fun rememberDeviceBearing(enabled: Boolean): Float? {
                 var azimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
                 azimuth = (azimuth + 360f) % 360f
 
-                // Android's azimuth increases in the opposite direction to the
-                // map rotation used by leaflet-rotate. Keep the sensor's north
-                // reference, but invert its direction so a physical right turn
-                // rotates the driving map right as well.
-                azimuth = (360f - azimuth) % 360f
+                // Geographic heading clockwise from north. Leaflet's setBearing
+                // uses the opposite sense — that invert lives only in map.html
+                // applyMapBearing(), so GPS course and this compass stay aligned.
 
                 if (filtered.isNaN()) {
                     filtered = azimuth

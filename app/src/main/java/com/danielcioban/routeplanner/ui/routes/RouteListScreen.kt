@@ -1,6 +1,9 @@
 package com.danielcioban.routeplanner.ui.routes
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -19,15 +21,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,23 +42,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.RouteWithStops
+import com.danielcioban.routeplanner.data.settings.DistanceUnit
+import com.danielcioban.routeplanner.ui.components.CollapsibleBottomIsland
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListItem
 import com.danielcioban.routeplanner.ui.components.MapAttributionChip
+import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
 import com.danielcioban.routeplanner.ui.location.rememberDeviceBearing
 import com.danielcioban.routeplanner.ui.location.rememberMergedUserFix
 import com.danielcioban.routeplanner.ui.location.rememberUserLocation
 import com.danielcioban.routeplanner.ui.map.MapLayersButton
 import com.danielcioban.routeplanner.ui.map.MapLayersMenuHost
+import com.danielcioban.routeplanner.ui.map.MapViewMode
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.map.rememberMapChromeState
 import com.danielcioban.routeplanner.ui.menu.AppMenuPanel
 import com.danielcioban.routeplanner.ui.theme.IslandColors
+import com.danielcioban.routeplanner.util.GeoUtils
 import com.danielcioban.routeplanner.util.ShareRoute
 
 @Composable
@@ -66,13 +76,26 @@ fun RouteListScreen(
     onOpenSettings: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenStopLibrary: () -> Unit,
+    onOpenAccount: () -> Unit,
+    preferredMapStyle: MapViewMode = MapViewMode.MAP,
+    onPreferredMapStyleChange: (MapViewMode) -> Unit = {},
+    distanceUnit: DistanceUnit = DistanceUnit.METRIC,
 ) {
     val routes by viewModel.routes.collectAsStateWithLifecycle()
     val deliverySession by viewModel.deliverySession.collectAsStateWithLifecycle()
-    val chrome = rememberMapChromeState()
+    val accountSession by viewModel.accountSession.collectAsStateWithLifecycle()
+    val chrome = rememberMapChromeState(
+        preferredBrowseMode = preferredMapStyle,
+        onPreferredModeChange = onPreferredMapStyleChange,
+    )
     var menuOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val shareChooserTitle = stringResource(R.string.share_route_chooser)
+    val copySuffix = stringResource(R.string.route_copy_suffix)
+    var routeQuery by remember { mutableStateOf("") }
+    val filteredRoutes = remember(routes, routeQuery) {
+        routes.filter { it.matchesQuery(routeQuery) }
+    }
     val userLocation = rememberUserLocation(
         autoRequest = true,
         highFrequency = chrome.driveFollow,
@@ -87,6 +110,8 @@ fun RouteListScreen(
         val id = deliverySession.activeRouteId ?: return@remember null
         routes.firstOrNull { it.route.id == id }
     }
+
+    BackHandler(enabled = menuOpen) { menuOpen = false }
 
     Box(modifier = Modifier.fillMaxSize()) {
         RouteMapBackdrop(
@@ -136,7 +161,12 @@ fun RouteListScreen(
                     }
                 }
                 Spacer(modifier = Modifier.width(10.dp))
-                FloatingCircleButton(onClick = { menuOpen = !menuOpen }) {
+                FloatingCircleButton(
+                    onClick = {
+                        chrome.dismissLayersMenu()
+                        menuOpen = !menuOpen
+                    },
+                ) {
                     Icon(
                         Icons.Default.Menu,
                         contentDescription = stringResource(R.string.menu_open),
@@ -144,7 +174,12 @@ fun RouteListScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
-                MapLayersButton(onClick = chrome::openLayersMenu)
+                MapLayersButton(
+                    onClick = {
+                        menuOpen = false
+                        chrome.openLayersMenu()
+                    },
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 FloatingCircleButton(
                     onClick = {
@@ -211,14 +246,11 @@ fun RouteListScreen(
                 }
             }
 
-            FloatingIsland(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 160.dp, max = 340.dp),
-                shape = RoundedCornerShape(28.dp),
-                contentPadding = 12.dp,
+            CollapsibleBottomIsland(
+                modifier = Modifier.fillMaxWidth(),
+                maxExpandedHeight = 380.dp,
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxSize()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -242,12 +274,23 @@ fun RouteListScreen(
                                 color = IslandColors.onSurfaceMuted,
                             )
                         }
-                        FloatingCircleButton(onClick = onCreateRoute) {
+                        FloatingCircleButton(onClick = onCreateRoute, embedded = true) {
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = stringResource(R.string.cd_create_route),
                             )
                         }
+                    }
+
+                    if (routes.isNotEmpty()) {
+                        SoftOutlinedTextField(
+                            value = routeQuery,
+                            onValueChange = { routeQuery = it },
+                            label = stringResource(R.string.home_filter_routes),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                        )
                     }
 
                     if (routes.isEmpty()) {
@@ -257,24 +300,34 @@ fun RouteListScreen(
                             color = IslandColors.onSurfaceMuted,
                             modifier = Modifier.padding(12.dp),
                         )
+                    } else if (filteredRoutes.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.home_filter_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = IslandColors.onSurfaceMuted,
+                            modifier = Modifier.padding(12.dp),
+                        )
                     } else {
                         LazyColumn(
+                            modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            items(routes, key = { it.route.id }) { route ->
+                            items(filteredRoutes, key = { it.route.id }) { route ->
                                 RouteListRow(
                                     route = route,
                                     isActiveDelivery = route.route.id == deliverySession.activeRouteId,
+                                    distanceUnit = distanceUnit,
                                     onClick = { onOpenRoute(route.route.id) },
                                     onShare = {
                                         ShareRoute.share(context, route, shareChooserTitle)
                                     },
+                                    onDuplicate = {
+                                        viewModel.duplicateRoute(route.route.id, copySuffix) { newId ->
+                                            onOpenRoute(newId)
+                                        }
+                                    },
                                     onDelete = { viewModel.deleteRoute(route.route.id) },
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                                 )
                             }
                         }
@@ -284,28 +337,57 @@ fun RouteListScreen(
         }
 
         if (menuOpen) {
-            AppMenuPanel(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 72.dp, end = 16.dp),
-                onSettings = {
-                    menuOpen = false
-                    onOpenSettings()
-                },
-                onAbout = {
-                    menuOpen = false
-                    onOpenAbout()
-                },
-                onStopLibrary = {
-                    menuOpen = false
-                    onOpenStopLibrary()
-                },
-                onAccount = { menuOpen = false },
-                onProfile = { menuOpen = false },
-                onLogin = { menuOpen = false },
-                onLogout = { menuOpen = false },
-            )
+                    .fillMaxSize()
+                    .background(IslandColors.scrim.copy(alpha = 0.28f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { menuOpen = false },
+                    ),
+            ) {
+                AppMenuPanel(
+                    accountSession = accountSession,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(top = 72.dp, end = 16.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        ),
+                    onSettings = {
+                        menuOpen = false
+                        onOpenSettings()
+                    },
+                    onAbout = {
+                        menuOpen = false
+                        onOpenAbout()
+                    },
+                    onStopLibrary = {
+                        menuOpen = false
+                        onOpenStopLibrary()
+                    },
+                    onAccount = {
+                        menuOpen = false
+                        onOpenAccount()
+                    },
+                    onProfile = {
+                        menuOpen = false
+                        onOpenAccount()
+                    },
+                    onLogin = {
+                        menuOpen = false
+                        onOpenAccount()
+                    },
+                    onLogout = {
+                        menuOpen = false
+                        viewModel.signOut()
+                    },
+                )
+            }
         }
 
         MapLayersMenuHost(chrome = chrome)
@@ -316,18 +398,15 @@ fun RouteListScreen(
 private fun RouteListRow(
     route: RouteWithStops,
     isActiveDelivery: Boolean,
+    distanceUnit: DistanceUnit,
     onClick: () -> Unit,
     onShare: () -> Unit,
+    onDuplicate: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    val progress = if (route.stops.isEmpty()) 0f else route.completedCount.toFloat() / route.stops.size
+    IslandListItem(onClick = onClick) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 route.route.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -337,11 +416,20 @@ private fun RouteListRow(
                 text = if (isActiveDelivery) {
                     stringResource(R.string.home_resume_delivery)
                 } else {
-                    stringResource(
-                        R.string.home_stops_summary,
-                        route.stops.size,
-                        route.completedCount,
-                    )
+                    buildString {
+                        append(
+                            pluralStringResource(
+                                R.plurals.home_stops_summary,
+                                route.stops.size,
+                                route.stops.size,
+                                route.completedCount,
+                            ),
+                        )
+                        if (route.approxDistanceMeters > 0) {
+                            append(" · ")
+                            append(GeoUtils.formatDistance(route.approxDistanceMeters, distanceUnit))
+                        }
+                    }
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isActiveDelivery) {
@@ -349,6 +437,21 @@ private fun RouteListRow(
                 } else {
                     IslandColors.onSurfaceMuted
                 },
+            )
+            if (route.stops.isNotEmpty()) {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = IslandColors.fieldBorder.copy(alpha = 0.35f),
+                )
+            }
+        }
+        IconButton(onClick = onDuplicate) {
+            Icon(
+                Icons.Default.ContentCopy,
+                contentDescription = stringResource(R.string.cd_duplicate_route),
+                tint = IslandColors.onSurfaceMuted,
             )
         }
         IconButton(onClick = onShare) {

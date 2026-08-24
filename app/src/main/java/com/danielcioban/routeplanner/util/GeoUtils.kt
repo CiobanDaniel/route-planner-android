@@ -1,6 +1,7 @@
 package com.danielcioban.routeplanner.util
 
 import com.danielcioban.routeplanner.data.settings.DistanceUnit
+import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -50,14 +51,14 @@ object GeoUtils {
             DistanceUnit.METRIC -> if (meters < 1000) {
                 "${meters.roundToInt()} m"
             } else {
-                String.format("%.1f km", meters / 1000.0)
+                String.format(Locale.getDefault(), "%.1f km", meters / 1000.0)
             }
             DistanceUnit.IMPERIAL -> {
                 val feet = meters * 3.28084
                 if (feet < 528) {
                     "${feet.roundToInt()} ft"
                 } else {
-                    String.format("%.1f mi", meters / 1609.344)
+                    String.format(Locale.getDefault(), "%.1f mi", meters / 1609.344)
                 }
             }
         }

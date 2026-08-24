@@ -29,6 +29,7 @@ data class IslandPalette(
     val onSurfaceMuted: Color,
     val fieldBorder: Color,
     val fieldBorderFocused: Color,
+    val rowSurface: Color,
     val scrim: Color,
     /** Neumorphic light highlight — looks like a white halo in dark mode; keep off there. */
     val useHighlightShadow: Boolean = true,
@@ -41,8 +42,9 @@ val LightIslandPalette = IslandPalette(
     lightShadow = Color(0xFFFFFFFF),
     onSurface = Color(0xFF152033),
     onSurfaceMuted = Color(0xFF3A4658),
-    fieldBorder = Color(0xFF9AA5B5),
+    fieldBorder = Color(0xFF6B7788),
     fieldBorderFocused = BrandColors.orange,
+    rowSurface = Color(0xFFEEF1F5),
     scrim = Color(0x99000000),
     useHighlightShadow = true,
 )
@@ -55,8 +57,9 @@ val DarkIslandPalette = IslandPalette(
     onSurface = Color(0xFFF2F5F9),
     // High enough contrast on navy islands for secondary labels / “Then:” lines.
     onSurfaceMuted = Color(0xFFD5DCE6),
-    fieldBorder = Color(0xFF7A8799),
+    fieldBorder = Color(0xFF8A97A8),
     fieldBorderFocused = BrandColors.orangeSoft,
+    rowSurface = Color(0xFF222E3E),
     scrim = Color(0xCC000000),
     useHighlightShadow = false,
 )
@@ -81,6 +84,8 @@ object IslandColors {
         @Composable @ReadOnlyComposable get() = LocalIslandColors.current.fieldBorder
     val fieldBorderFocused: Color
         @Composable @ReadOnlyComposable get() = LocalIslandColors.current.fieldBorderFocused
+    val rowSurface: Color
+        @Composable @ReadOnlyComposable get() = LocalIslandColors.current.rowSurface
     val scrim: Color
         @Composable @ReadOnlyComposable get() = LocalIslandColors.current.scrim
     val useHighlightShadow: Boolean

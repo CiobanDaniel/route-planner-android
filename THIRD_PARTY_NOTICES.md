@@ -17,11 +17,15 @@ When you ship publicly, show OSM attribution in the app (About / map footer) and
 - License: BSD-2-Clause
 - Usage: map rendering inside an Android WebView (`app/src/main/assets/map.html`)
 
-## Tile providers (Carto / Esri / OSM raster)
+## Tile providers (Esri)
 
-Various public tile endpoints are used for Map / Satellite / Terrain styles.
-Respect each provider’s tile usage policy and attribution requirements before heavy production traffic.
-Self-host or use a commercial tile plan if usage grows.
+Everyday **Map** / **Driving** streets: Esri World Street Map (OSM and other sources). Dark theme inverts the same street tiles so roads stay light on land; satellite and terrain are not inverted.
+
+**Satellite:** Esri World Imagery plus Esri Reference overlays (roads and place names).
+
+**Terrain:** Esri World Topo Map.
+
+Respect each provider’s tile usage policy and attribution. Esri’s public raster services are intended for fair-use; self-host or use a keyed commercial plan (MapTiler, Stadia, etc.) if traffic grows. Vector MapLibre / OpenFreeMap is deferred while heading uses leaflet-rotate.
 
 ## OSRM (Open Source Routing Machine)
 

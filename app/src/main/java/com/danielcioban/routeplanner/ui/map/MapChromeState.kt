@@ -1,6 +1,7 @@
 package com.danielcioban.routeplanner.ui.map
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -12,8 +13,14 @@ import androidx.compose.runtime.setValue
  * Keep the layers **menu** as a Dialog owned by a fillMaxSize root — never expand
  * inside a height-wrapping chrome column (see docs/DEV_STATUS.md).
  */
-class MapChromeState {
-    var mapViewMode by mutableStateOf(MapViewMode.MAP)
+class MapChromeState(
+    initialBrowseMode: MapViewMode = MapViewMode.MAP,
+) {
+    var onPreferredModeChange: (MapViewMode) -> Unit = {}
+    private var preferredBrowseMode =
+        if (initialBrowseMode == MapViewMode.DRIVING) MapViewMode.MAP else initialBrowseMode
+
+    var mapViewMode by mutableStateOf(preferredBrowseMode)
         private set
     var driveFollow by mutableStateOf(false)
     var recenterToken by mutableIntStateOf(0)
@@ -32,7 +39,7 @@ class MapChromeState {
         layersMenuOpen = false
     }
 
-    /** Selecting Driving turns follow on; other styles turn follow off. */
+    /** Selecting Driving turns follow on; other styles turn follow off and persist. */
     fun selectMapMode(mode: MapViewMode) {
         mapViewMode = mode
         if (mode == MapViewMode.DRIVING) {
@@ -40,6 +47,8 @@ class MapChromeState {
             bumpRecenter()
         } else {
             driveFollow = false
+            preferredBrowseMode = mode
+            onPreferredModeChange(mode)
         }
     }
 
@@ -48,6 +57,8 @@ class MapChromeState {
         if (enabled) {
             mapViewMode = MapViewMode.DRIVING
             bumpRecenter()
+        } else {
+            mapViewMode = preferredBrowseMode
         }
     }
 
@@ -59,12 +70,30 @@ class MapChromeState {
 
     fun exitDrivingFollow() {
         driveFollow = false
-        mapViewMode = MapViewMode.MAP
+        mapViewMode = preferredBrowseMode
+    }
+
+    fun applyPreferredIfIdle(mode: MapViewMode) {
+        if (mode == MapViewMode.DRIVING) return
+        preferredBrowseMode = mode
+        if (!driveFollow && mapViewMode != MapViewMode.DRIVING) {
+            mapViewMode = mode
+        }
     }
 }
 
 @Composable
-fun rememberMapChromeState(): MapChromeState = remember { MapChromeState() }
+fun rememberMapChromeState(
+    preferredBrowseMode: MapViewMode = MapViewMode.MAP,
+    onPreferredModeChange: (MapViewMode) -> Unit = {},
+): MapChromeState {
+    val state = remember { MapChromeState(preferredBrowseMode) }
+    state.onPreferredModeChange = onPreferredModeChange
+    LaunchedEffect(preferredBrowseMode) {
+        state.applyPreferredIfIdle(preferredBrowseMode)
+    }
+    return state
+}
 
 /**
  * Renders [MapLayersMenuDialog] when open. Pass [followChecked] when the switch

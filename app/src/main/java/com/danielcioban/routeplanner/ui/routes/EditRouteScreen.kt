@@ -1,6 +1,5 @@
 package com.danielcioban.routeplanner.ui.routes
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,8 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.R
+import com.danielcioban.routeplanner.ui.components.CollapsibleBottomIsland
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandListItemColumn
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
 import com.danielcioban.routeplanner.ui.library.StopLibraryPickerDialog
 import com.danielcioban.routeplanner.ui.location.rememberUserLocation
@@ -149,11 +149,9 @@ fun EditRouteScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            FloatingIsland(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 520.dp),
-                shape = RoundedCornerShape(28.dp),
+            CollapsibleBottomIsland(
+                modifier = Modifier.fillMaxWidth(),
+                maxExpandedHeight = 520.dp,
                 contentPadding = 16.dp,
             ) {
                 if (state.isLoading) {
@@ -167,6 +165,7 @@ fun EditRouteScreen(
                     }
                 } else {
                     LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(bottom = 4.dp),
                     ) {
@@ -214,6 +213,11 @@ fun EditRouteScreen(
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.weight(1f),
                                 )
+                                if (state.stops.size >= 2) {
+                                    TextButton(onClick = viewModel::optimizeStopOrder) {
+                                        Text(stringResource(R.string.action_optimize_order))
+                                    }
+                                }
                                 TextButton(onClick = { showLibraryPicker = true }) {
                                     Text(stringResource(R.string.library_pick_title))
                                 }
@@ -323,13 +327,7 @@ private fun CompactStopRow(
     onMoveDown: () -> Unit,
 ) {
     val hasPin = stop.latitudeText.isNotBlank() && stop.longitudeText.isNotBlank()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(IslandColors.surface, RoundedCornerShape(16.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    IslandListItemColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SoftField(
             value = stop.name,
             onValueChange = { value -> onChange { it.copy(name = value) } },
