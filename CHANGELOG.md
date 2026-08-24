@@ -32,6 +32,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Bottom islands on the map can be dragged down (grab bar) to show more of the map
 
 ### Fixed
+- Room v3/v4 migration tests include the library and task indexes Room expects after upgrading to v5
 - Removed duplicate English OSRM instruction builder; turn-by-turn display uses localized `ManeuverFormatter` only
 - GPS-location stop name no longer falls back to hardcoded English in the ViewModel
 - Heading triangle angle flipped back to match phone direction

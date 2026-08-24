@@ -1,7 +1,9 @@
 package com.danielcioban.routeplanner.data.local
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -15,44 +17,36 @@ import org.robolectric.annotation.Config
 @Config(sdk = [28])
 class AppDatabaseMigrationTest {
     private lateinit var context: Context
-    private val dbName = "migration_test_2_3"
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.deleteDatabase(dbName)
+        deleteAllTestDatabases()
     }
 
     @After
     fun tearDown() {
-        context.deleteDatabase(dbName)
+        deleteAllTestDatabases()
     }
 
     @Test
     fun migrate2To3_createsStopTasksTable() {
-        createVersion2Database()
+        createVersion2Database(DB_2_3)
 
-        val room = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
-            .addMigrations(*AppDatabase.ALL_MIGRATIONS)
-            .build()
-        room.openHelper.writableDatabase.use { migrated ->
+        withMigrated(DB_2_3) { migrated ->
             migrated.query(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='stop_tasks'",
             ).use { cursor ->
                 assertTrue(cursor.moveToFirst())
             }
         }
-        room.close()
     }
 
     @Test
     fun migrate3To4_addsRemoteIdColumns() {
-        createVersion3Database()
+        createVersion3Database(DB_3_4)
 
-        val room = Room.databaseBuilder(context, AppDatabase::class.java, "migration_test_3_4")
-            .addMigrations(*AppDatabase.ALL_MIGRATIONS)
-            .build()
-        room.openHelper.writableDatabase.use { migrated ->
+        withMigrated(DB_3_4) { migrated ->
             migrated.query("PRAGMA table_info(routes)").use { cursor ->
                 val columns = mutableListOf<String>()
                 while (cursor.moveToNext()) {
@@ -66,18 +60,13 @@ class AppDatabaseMigrationTest {
                 assertTrue(cursor.getString(0).isNotBlank())
             }
         }
-        room.close()
-        context.deleteDatabase("migration_test_3_4")
     }
 
     @Test
     fun migrate4To5_backfillsLibraryReferences() {
-        createVersion4Database()
+        createVersion4Database(DB_4_5)
 
-        val room = Room.databaseBuilder(context, AppDatabase::class.java, "migration_test_4_5")
-            .addMigrations(*AppDatabase.ALL_MIGRATIONS)
-            .build()
-        room.openHelper.writableDatabase.use { migrated ->
+        withMigrated(DB_4_5) { migrated ->
             migrated.query("PRAGMA index_list(stops)").use { cursor ->
                 val names = mutableListOf<String>()
                 while (cursor.moveToNext()) {
@@ -94,17 +83,40 @@ class AppDatabaseMigrationTest {
                 assertTrue(cursor.getLong(0) >= 1L)
             }
         }
-        room.close()
-        context.deleteDatabase("migration_test_4_5")
     }
 
-    private fun createVersion3Database() {
-        context.deleteDatabase("migration_test_3_4")
-        val sqlite = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(
-            context.getDatabasePath("migration_test_3_4").path,
-            null,
+    private fun withMigrated(name: String, block: (SupportSQLiteDatabase) -> Unit) {
+        val room = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(*AppDatabase.ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            // Do not Closeable.use() Room's SupportSQLiteDatabase — that closes the
+            // connection pool. Query, then close the RoomDatabase.
+            block(room.openHelper.writableDatabase)
+        } finally {
+            room.close()
+        }
+    }
+
+    private fun openFixture(name: String, version: Int): SQLiteDatabase {
+        context.deleteDatabase(name)
+        val file = context.getDatabasePath(name)
+        file.parentFile?.mkdirs()
+        val sqlite = SQLiteDatabase.openOrCreateDatabase(file.path, null)
+        sqlite.version = version
+        return sqlite
+    }
+
+    private fun createStopLibraryIndexes(sqlite: SQLiteDatabase) {
+        sqlite.execSQL("CREATE INDEX index_stop_library_name ON stop_library (name)")
+        sqlite.execSQL(
+            "CREATE INDEX index_stop_library_updatedAtEpochMs ON stop_library (updatedAtEpochMs)",
         )
-        sqlite.version = 3
+    }
+
+    private fun createVersion2Database(name: String) {
+        val sqlite = openFixture(name, version = 2)
         sqlite.execSQL(
             """
             CREATE TABLE routes (
@@ -148,6 +160,67 @@ class AppDatabaseMigrationTest {
             )
             """.trimIndent(),
         )
+        createStopLibraryIndexes(sqlite)
+        sqlite.execSQL(
+            "INSERT INTO routes (name, notes, createdAtEpochMs, updatedAtEpochMs) VALUES ('R', '', 1, 1)",
+        )
+        sqlite.execSQL(
+            """
+            INSERT INTO stops (
+                routeId, position, name, addressHint, notes,
+                latitude, longitude, isCompleted, libraryStopId
+            ) VALUES (1, 0, 'S', '', '', 45.0, 21.0, 0, NULL)
+            """.trimIndent(),
+        )
+        sqlite.close()
+    }
+
+    private fun createVersion3Database(name: String) {
+        val sqlite = openFixture(name, version = 3)
+        sqlite.execSQL(
+            """
+            CREATE TABLE routes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                notes TEXT NOT NULL,
+                createdAtEpochMs INTEGER NOT NULL,
+                updatedAtEpochMs INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        sqlite.execSQL(
+            """
+            CREATE TABLE stops (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                routeId INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                addressHint TEXT NOT NULL,
+                notes TEXT NOT NULL,
+                latitude REAL,
+                longitude REAL,
+                isCompleted INTEGER NOT NULL,
+                libraryStopId INTEGER,
+                FOREIGN KEY(routeId) REFERENCES routes(id) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        sqlite.execSQL("CREATE INDEX index_stops_routeId ON stops (routeId)")
+        sqlite.execSQL(
+            """
+            CREATE TABLE stop_library (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                addressHint TEXT NOT NULL,
+                notes TEXT NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                createdAtEpochMs INTEGER NOT NULL,
+                updatedAtEpochMs INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        createStopLibraryIndexes(sqlite)
         sqlite.execSQL(
             """
             CREATE TABLE stop_tasks (
@@ -169,80 +242,8 @@ class AppDatabaseMigrationTest {
         sqlite.close()
     }
 
-    private fun createVersion2Database() {
-        val sqlite = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(
-            context.getDatabasePath(dbName).path,
-            null,
-        )
-        sqlite.version = 2
-        sqlite.execSQL(
-            """
-            CREATE TABLE routes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                name TEXT NOT NULL,
-                notes TEXT NOT NULL,
-                createdAtEpochMs INTEGER NOT NULL,
-                updatedAtEpochMs INTEGER NOT NULL
-            )
-            """.trimIndent(),
-        )
-        sqlite.execSQL(
-            """
-            CREATE TABLE stops (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                routeId INTEGER NOT NULL,
-                position INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                addressHint TEXT NOT NULL,
-                notes TEXT NOT NULL,
-                latitude REAL,
-                longitude REAL,
-                isCompleted INTEGER NOT NULL,
-                libraryStopId INTEGER,
-                FOREIGN KEY(routeId) REFERENCES routes(id) ON UPDATE NO ACTION ON DELETE CASCADE
-            )
-            """.trimIndent(),
-        )
-        sqlite.execSQL("CREATE INDEX index_stops_routeId ON stops (routeId)")
-        sqlite.execSQL(
-            """
-            CREATE TABLE stop_library (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                name TEXT NOT NULL,
-                addressHint TEXT NOT NULL,
-                notes TEXT NOT NULL,
-                latitude REAL NOT NULL,
-                longitude REAL NOT NULL,
-                createdAtEpochMs INTEGER NOT NULL,
-                updatedAtEpochMs INTEGER NOT NULL
-            )
-            """.trimIndent(),
-        )
-        sqlite.execSQL("CREATE INDEX index_stop_library_name ON stop_library (name)")
-        sqlite.execSQL(
-            "CREATE INDEX index_stop_library_updatedAtEpochMs ON stop_library (updatedAtEpochMs)",
-        )
-        sqlite.execSQL(
-            "INSERT INTO routes (name, notes, createdAtEpochMs, updatedAtEpochMs) VALUES ('R', '', 1, 1)",
-        )
-        sqlite.execSQL(
-            """
-            INSERT INTO stops (
-                routeId, position, name, addressHint, notes,
-                latitude, longitude, isCompleted, libraryStopId
-            ) VALUES (1, 0, 'S', '', '', 45.0, 21.0, 0, NULL)
-            """.trimIndent(),
-        )
-        sqlite.close()
-    }
-
-    private fun createVersion4Database() {
-        context.deleteDatabase("migration_test_4_5")
-        val sqlite = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(
-            context.getDatabasePath("migration_test_4_5").path,
-            null,
-        )
-        sqlite.version = 4
+    private fun createVersion4Database(name: String) {
+        val sqlite = openFixture(name, version = 4)
         sqlite.execSQL(
             """
             CREATE TABLE routes (
@@ -295,6 +296,7 @@ class AppDatabaseMigrationTest {
             """.trimIndent(),
         )
         sqlite.execSQL("CREATE UNIQUE INDEX index_stop_library_remoteId ON stop_library (remoteId)")
+        createStopLibraryIndexes(sqlite)
         sqlite.execSQL(
             """
             CREATE TABLE stop_tasks (
@@ -311,6 +313,8 @@ class AppDatabaseMigrationTest {
             )
             """.trimIndent(),
         )
+        sqlite.execSQL("CREATE INDEX index_stop_tasks_stopId ON stop_tasks (stopId)")
+        sqlite.execSQL("CREATE UNIQUE INDEX index_stop_tasks_remoteId ON stop_tasks (remoteId)")
         sqlite.execSQL(
             "INSERT INTO routes (remoteId, name, notes, createdAtEpochMs, updatedAtEpochMs) VALUES ('r1', 'R', '', 1, 1)",
         )
@@ -323,5 +327,15 @@ class AppDatabaseMigrationTest {
             """.trimIndent(),
         )
         sqlite.close()
+    }
+
+    private fun deleteAllTestDatabases() {
+        listOf(DB_2_3, DB_3_4, DB_4_5).forEach { context.deleteDatabase(it) }
+    }
+
+    companion object {
+        private const val DB_2_3 = "migration_test_2_3"
+        private const val DB_3_4 = "migration_test_3_4"
+        private const val DB_4_5 = "migration_test_4_5"
     }
 }

@@ -29,7 +29,7 @@ Related docs: `AGENTS.md`, `CHANGELOG.md`, `docs/adr/0001-map-webview-leaflet.md
 | Settings (theme / EN-RO / units / keep screen on) | Done |
 | Delivery session persist/resume | Done |
 | Stop library (device-local) | Done — canonical stops; routes reference `libraryStopId` |
-| Per-stop task checklists (local) | Done in working tree; **not committed** |
+| Per-stop task checklists (local) | Done |
 | Kotlin/Android client | Active implementation |
 | Accounts / cloud sync / share library | Groundwork (session store, remoteId, JSON backup); auth TBD |
 | Play signing / Crashlytics / privacy URL | Manual / pending |
@@ -301,6 +301,12 @@ Landed in **0.4.0** (this PR). Next product increment after merge: courier-facin
 ---
 
 ## Session / change log
+
+### 2026-08-24 — CI Room migration tests
+
+- GitHub `testDebugUnitTest` failed `migrate3To4` / `migrate4To5` with `IllegalStateException` when Room opened the migrated DB (v2→v3 passed).
+- Cause: v3/v4 fixtures omitted `index_stop_library_name`, `index_stop_library_updatedAtEpochMs`, and (v4) `index_stop_tasks_stopId`. Room v5 still expects those indexes after chained migrations.
+- Tests now create the `databases/` dir, keep Room's connection open until `room.close()`, and enable `includeAndroidResources` for Robolectric on Linux.
 
 ### 2026-08-24 — Ship 0.4.0
 

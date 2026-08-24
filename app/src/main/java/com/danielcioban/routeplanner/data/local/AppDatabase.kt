@@ -151,7 +151,7 @@ abstract class AppDatabase : RoomDatabase() {
                     val id = cursor.getLong(0)
                     db.execSQL(
                         "UPDATE $table SET remoteId = ? WHERE id = ?",
-                        arrayOf(UUID.randomUUID().toString(), id),
+                        arrayOf<Any>(UUID.randomUUID().toString(), id),
                     )
                 }
             }
