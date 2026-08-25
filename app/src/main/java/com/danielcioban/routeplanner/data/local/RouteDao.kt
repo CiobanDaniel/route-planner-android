@@ -11,8 +11,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface RouteDao {
     @Transaction
-    @Query("SELECT * FROM routes ORDER BY updatedAtEpochMs DESC")
+    @Query("SELECT * FROM routes WHERE deletedAtEpochMs IS NULL ORDER BY updatedAtEpochMs DESC")
     fun observeRoutes(): Flow<List<RouteWithStops>>
+
+    @Transaction
+    @Query("SELECT * FROM routes WHERE deletedAtEpochMs IS NOT NULL ORDER BY deletedAtEpochMs DESC")
+    fun observeTrashRoutes(): Flow<List<RouteWithStops>>
 
     @Transaction
     @Query("SELECT * FROM routes WHERE id = :routeId")
@@ -67,8 +71,20 @@ interface RouteDao {
     @Query("UPDATE stops SET isCompleted = :completed WHERE id = :stopId")
     suspend fun setStopCompleted(stopId: Long, completed: Boolean)
 
-    @Query("UPDATE stops SET isCompleted = 0 WHERE routeId = :routeId")
+    @Query(
+        """
+        UPDATE stops SET isCompleted = 0, isVisited = 0, visitedAtEpochMs = NULL,
+            failureReason = NULL, failurePhotoPath = NULL, failureSignaturePath = NULL,
+            tasksDeferred = 0, tasksDeferredNote = '',
+            podPhotoPath = NULL, podSignaturePath = NULL, podCapturedAtEpochMs = NULL,
+            codCollected = 0
+        WHERE routeId = :routeId
+        """,
+    )
     suspend fun resetStopCompletions(routeId: Long)
+
+    @Query("SELECT * FROM stops WHERE routeId = :routeId AND isOrigin = 1")
+    suspend fun getOriginStops(routeId: Long): List<StopEntity>
 
     @Query("UPDATE routes SET updatedAtEpochMs = :updatedAt WHERE id = :routeId")
     suspend fun touchRoute(routeId: Long, updatedAt: Long = System.currentTimeMillis())
@@ -78,6 +94,7 @@ interface RouteDao {
         SELECT DISTINCT routes.* FROM routes
         INNER JOIN stops ON stops.routeId = routes.id
         WHERE stops.libraryStopId = :libraryStopId
+          AND routes.deletedAtEpochMs IS NULL
         ORDER BY routes.name COLLATE NOCASE ASC
         """,
     )
@@ -85,6 +102,9 @@ interface RouteDao {
 
     @Query("SELECT * FROM stops WHERE libraryStopId = :libraryStopId")
     suspend fun getStopsWithLibraryId(libraryStopId: Long): List<StopEntity>
+
+    @Query("UPDATE stops SET libraryStopId = :keepId WHERE libraryStopId = :dropId")
+    suspend fun reassignLibraryStop(dropId: Long, keepId: Long)
 
     @Query(
         """

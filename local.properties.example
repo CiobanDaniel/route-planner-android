@@ -1,0 +1,17 @@
+## Android SDK (Android Studio writes this)
+## sdk.dir=C:\\Users\\you\\AppData\\Local\\Android\\Sdk
+
+## Production routing / geocoding (no trailing slash).
+## Public demos are the Gradle defaults — not for a van day. Run deploy/routing
+## (docs/SELF_HOST_ROUTING.md), then set these and rebuild.
+# osrm.base.url=https://route.example.com
+# nominatim.base.url=https://search.example.com
+## Debug emulator on the same PC as Docker (HTTP allowed in debug only):
+# osrm.base.url=http://10.0.2.2:5000
+# nominatim.base.url=http://10.0.2.2:8080
+## Optional second servers if the primary is down (429 / timeout / 5xx).
+# osrm.fallback.url=https://router.project-osrm.org
+# nominatim.fallback.url=https://nominatim.openstreetmap.org
+## Optional Play / privacy overrides
+# privacy.policy.url=https://ciobandaniel.github.io/route-planner-android/privacy/
+# support.email=you@example.com

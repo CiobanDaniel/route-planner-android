@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.local.StopTaskEntity
+import com.danielcioban.routeplanner.data.local.TaskTemplateEntity
 import com.danielcioban.routeplanner.ui.components.IslandListItemColumn
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
 import com.danielcioban.routeplanner.ui.theme.IslandColors
@@ -40,6 +42,9 @@ fun StopTaskChecklist(
     onCompletionNoteChange: (taskId: Long, note: String) -> Unit,
     onUpdateTask: (taskId: Long, title: String, required: Boolean) -> Unit,
     onDeleteTask: (taskId: Long) -> Unit,
+    templates: List<TaskTemplateEntity> = emptyList(),
+    onApplyTemplate: (templateId: Long) -> Unit = {},
+    onApplyTemplateToRemaining: (templateId: Long) -> Unit = {},
     readOnly: Boolean = false,
 ) {
     var newTaskTitle by remember(stopId) { mutableStateOf("") }
@@ -86,6 +91,37 @@ fun StopTaskChecklist(
                 onUpdateTask = { title, required -> onUpdateTask(task.id, title, required) },
                 onDelete = { onDeleteTask(task.id) },
             )
+        }
+        if (!readOnly && templates.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.task_templates_apply),
+                style = MaterialTheme.typography.labelMedium,
+                color = IslandColors.onSurfaceMuted,
+            )
+            templates.forEach { template ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FilterChip(
+                        selected = false,
+                        onClick = { onApplyTemplate(template.id) },
+                        label = {
+                            Text(
+                                if (template.isRequired) {
+                                    stringResource(R.string.task_template_required_chip, template.title)
+                                } else {
+                                    template.title
+                                },
+                            )
+                        },
+                    )
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+                    TextButton(onClick = { onApplyTemplateToRemaining(template.id) }) {
+                        Text(stringResource(R.string.task_template_apply_remaining))
+                    }
+                }
+            }
         }
         if (!readOnly) {
             SoftOutlinedTextField(

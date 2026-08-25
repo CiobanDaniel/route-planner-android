@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Place
@@ -49,7 +52,10 @@ fun DeliveryStopQueueSheet(
             style = MaterialTheme.typography.bodyMedium,
             color = IslandColors.onSurfaceMuted,
         )
-        if (currentStopId != null && remainingStops.any { it.id == currentStopId }) {
+        if (currentStopId != null &&
+            remainingStops.size >= 2 &&
+            remainingStops.any { it.id == currentStopId }
+        ) {
             FilledTonalButton(
                 onClick = {
                     onSkipCurrent()
@@ -91,7 +97,73 @@ fun DeliveryStopQueueSheet(
 }
 
 @Composable
-private fun QueueStopRow(
+fun DeliveryQueuePane(
+    remainingStops: List<StopEntity>,
+    currentStopId: Long?,
+    onJumpTo: (StopEntity) -> Unit,
+    onSkipCurrent: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.queue_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = IslandColors.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.queue_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            color = IslandColors.onSurfaceMuted,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (currentStopId != null &&
+            remainingStops.size >= 2 &&
+            remainingStops.any { it.id == currentStopId }
+        ) {
+            FilledTonalButton(
+                onClick = onSkipCurrent,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Icon(Icons.Default.SkipNext, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.queue_skip_current))
+            }
+        }
+        if (remainingStops.isEmpty()) {
+            Text(
+                text = stringResource(R.string.nav_all_completed),
+                style = MaterialTheme.typography.bodyLarge,
+                color = IslandColors.onSurface,
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                itemsIndexed(remainingStops, key = { _, stop -> stop.id }) { index, stop ->
+                    val isCurrent = stop.id == currentStopId
+                    QueueStopRow(
+                        index = index + 1,
+                        stop = stop,
+                        isCurrent = isCurrent,
+                        onClick = {
+                            if (!isCurrent) onJumpTo(stop)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun QueueStopRow(
     index: Int,
     stop: StopEntity,
     isCurrent: Boolean,

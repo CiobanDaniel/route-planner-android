@@ -69,4 +69,54 @@ object GeoUtils {
         val index = ((degrees + 22.5) / 45.0).toInt() % 8
         return "${dirs[index]} (${degrees.roundToInt()}°)"
     }
+
+    fun formatClockMinutes(
+        minutesFromMidnight: Int,
+        use24Hour: Boolean = true,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val clamped = minutesFromMidnight.coerceIn(0, 23 * 60 + 59)
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, clamped / 60)
+            set(java.util.Calendar.MINUTE, clamped % 60)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val pattern = if (use24Hour) "HH:mm" else "h:mm a"
+        return java.text.SimpleDateFormat(pattern, locale).format(cal.time)
+    }
+
+    fun formatDurationMinutes(totalMinutes: Int): String {
+        val minutes = totalMinutes.coerceAtLeast(0)
+        val hours = minutes / 60
+        val rest = minutes % 60
+        return when {
+            hours <= 0 -> "${rest} min"
+            rest == 0 -> "${hours} h"
+            else -> "${hours} h ${rest} min"
+        }
+    }
+
+    fun formatClockFromEpoch(
+        epochMs: Long,
+        use24Hour: Boolean = true,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = epochMs }
+        return formatClockMinutes(
+            cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE),
+            use24Hour,
+            locale,
+        )
+    }
+
+    fun formatDateTime(
+        epochMs: Long,
+        use24Hour: Boolean = true,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val date = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, locale)
+            .format(java.util.Date(epochMs))
+        return "$date, ${formatClockFromEpoch(epochMs, use24Hour, locale)}"
+    }
 }

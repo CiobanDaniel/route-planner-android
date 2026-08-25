@@ -2,11 +2,16 @@ package com.danielcioban.routeplanner.ui.map
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.danielcioban.routeplanner.RoutePlannerApplication
+import kotlinx.coroutines.launch
 
 /**
  * Shared map chrome: view mode, follow-me, recenter token, layers menu visibility.
@@ -62,9 +67,9 @@ class MapChromeState(
         }
     }
 
-    fun enterDrivingFollow() {
+    fun enterDrivingFollow(follow: Boolean = true) {
         mapViewMode = MapViewMode.DRIVING
-        driveFollow = true
+        driveFollow = follow
         bumpRecenter()
     }
 
@@ -105,11 +110,20 @@ fun MapLayersMenuHost(
     followChecked: Boolean = chrome.driveFollow,
 ) {
     if (!chrome.layersMenuOpen) return
+    val app = LocalContext.current.applicationContext as RoutePlannerApplication
+    val appSettings by app.settingsRepository.settings.collectAsState(initial = app.latestSettings)
+    val scope = rememberCoroutineScope()
     MapLayersMenuDialog(
         selected = chrome.mapViewMode,
         onSelected = chrome::selectMapMode,
         driveFollow = followChecked,
         onDriveFollowChange = chrome::setFollowEnabled,
+        northUp = appSettings.northUpWhileDriving,
+        onNorthUpChange = { enabled ->
+            scope.launch { app.settingsRepository.setNorthUpWhileDriving(enabled) }
+        },
+        dataSaver = appSettings.dataSaver,
+        onReloadMap = { MapAssetReload.bump() },
         onDismiss = chrome::dismissLayersMenu,
     )
 }

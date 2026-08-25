@@ -11,11 +11,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.danielcioban.routeplanner.data.settings.ThemeMode
 
-/** Brand accent — warm orange used for buttons, highlights, and focus. */
+/** Brand accent — warm orange for primary actions and selection, not every label. */
 object BrandColors {
     val orange = Color(0xFFE86A17)
     val orangeDark = Color(0xFFB84E0E)
-    val orangeSoft = Color(0xFFF0A04B)
+    val orangeSoft = Color(0xFFE8A05A)
     val orangeMuted = Color(0xFFC45A12)
     val orangeDeep = Color(0xFF8F3A0A)
 }
@@ -31,40 +31,55 @@ data class IslandPalette(
     val fieldBorderFocused: Color,
     val rowSurface: Color,
     val scrim: Color,
+    /** Metadata chips (library, van, origin) — not the orange CTA. */
+    val badge: Color,
+    val success: Color,
+    val noteFill: Color,
+    val progress: Color,
     /** Neumorphic light highlight — looks like a white halo in dark mode; keep off there. */
     val useHighlightShadow: Boolean = true,
 )
 
 val LightIslandPalette = IslandPalette(
-    surface = Color(0xFFF7F8FA),
-    surfaceElevated = Color(0xFFFFFFFF),
-    darkShadow = Color(0xFF7A8699),
+    surface = Color(0xFFF4F6F8),
+    surfaceElevated = Color(0xFFFAFBFC),
+    darkShadow = Color(0xFF6B7380),
     lightShadow = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF152033),
-    onSurfaceMuted = Color(0xFF3A4658),
-    fieldBorder = Color(0xFF6B7788),
+    onSurface = Color(0xFF1A2332),
+    onSurfaceMuted = Color(0xFF5C6776),
+    fieldBorder = Color(0xFFC5CDD6),
     fieldBorderFocused = BrandColors.orange,
-    rowSurface = Color(0xFFEEF1F5),
-    scrim = Color(0x99000000),
+    rowSurface = Color(0xFFF0F3F6),
+    scrim = Color(0x8A000000),
+    badge = Color(0xFF3D5C73),
+    success = Color(0xFF2E7D4F),
+    noteFill = Color(0xFFEEF2F6),
+    progress = Color(0xFF3D6B8A),
     useHighlightShadow = true,
 )
 
 val DarkIslandPalette = IslandPalette(
-    surface = Color(0xFF243041),
-    surfaceElevated = Color(0xFF2C3A4D),
+    surface = Color(0xFF1E2836),
+    surfaceElevated = Color(0xFF273243),
     darkShadow = Color(0xFF000000),
     lightShadow = Color(0x00000000),
-    onSurface = Color(0xFFF2F5F9),
-    // High enough contrast on navy islands for secondary labels / “Then:” lines.
-    onSurfaceMuted = Color(0xFFD5DCE6),
-    fieldBorder = Color(0xFF8A97A8),
+    onSurface = Color(0xFFF0F3F7),
+    onSurfaceMuted = Color(0xFFA8B4C2),
+    fieldBorder = Color(0xFF4A5868),
     fieldBorderFocused = BrandColors.orangeSoft,
-    rowSurface = Color(0xFF222E3E),
-    scrim = Color(0xCC000000),
+    rowSurface = Color(0xFF1C2633),
+    scrim = Color(0xB3000000),
+    badge = Color(0xFF9BB4C8),
+    success = Color(0xFF7BC49A),
+    noteFill = Color(0xFF1A232E),
+    progress = Color(0xFF7EA3C0),
     useHighlightShadow = false,
 )
 
 val LocalIslandColors = staticCompositionLocalOf { LightIslandPalette }
+
+/** Skip or shorten UI motion when the user asked for it in Settings. */
+val LocalReduceMotion = staticCompositionLocalOf { false }
 
 /** Theme-aware island colors — read only from Compose. */
 object IslandColors {
@@ -88,6 +103,14 @@ object IslandColors {
         @Composable @ReadOnlyComposable get() = LocalIslandColors.current.rowSurface
     val scrim: Color
         @Composable @ReadOnlyComposable get() = LocalIslandColors.current.scrim
+    val badge: Color
+        @Composable @ReadOnlyComposable get() = LocalIslandColors.current.badge
+    val success: Color
+        @Composable @ReadOnlyComposable get() = LocalIslandColors.current.success
+    val noteFill: Color
+        @Composable @ReadOnlyComposable get() = LocalIslandColors.current.noteFill
+    val progress: Color
+        @Composable @ReadOnlyComposable get() = LocalIslandColors.current.progress
     val useHighlightShadow: Boolean
         @Composable @ReadOnlyComposable get() = LocalIslandColors.current.useHighlightShadow
 }
@@ -95,31 +118,55 @@ object IslandColors {
 private val LightColorScheme = lightColorScheme(
     primary = BrandColors.orange,
     onPrimary = Color.White,
-    secondary = BrandColors.orangeMuted,
+    primaryContainer = Color(0xFFF6E4D4),
+    onPrimaryContainer = BrandColors.orangeDeep,
+    secondary = Color(0xFF4A5C6E),
     onSecondary = Color.White,
-    tertiary = BrandColors.orangeSoft,
-    onTertiary = BrandColors.orangeDeep,
-    background = Color(0xFFE8EEF5),
+    secondaryContainer = Color(0xFFEEF1F5),
+    onSecondaryContainer = Color(0xFF1A2332),
+    tertiary = BrandColors.orangeMuted,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFE8EEF4),
+    onTertiaryContainer = Color(0xFF1A2332),
+    background = Color(0xFFE6ECF2),
     onBackground = LightIslandPalette.onSurface,
     surface = LightIslandPalette.surfaceElevated,
     onSurface = LightIslandPalette.onSurface,
-    surfaceVariant = Color(0xFFE8EDF4),
+    surfaceVariant = Color(0xFFE8EDF2),
     onSurfaceVariant = LightIslandPalette.onSurfaceMuted,
+    error = Color(0xFFC24732),
+    onError = Color.White,
+    errorContainer = Color(0xFFF8E0DA),
+    onErrorContainer = Color(0xFF6B2418),
+    outline = LightIslandPalette.fieldBorder,
+    outlineVariant = Color(0xFFD8DEE6),
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = BrandColors.orangeSoft,
-    onPrimary = BrandColors.orangeDeep,
-    secondary = BrandColors.orange,
-    onSecondary = Color.White,
-    tertiary = BrandColors.orangeMuted,
-    onTertiary = Color.White,
+    primary = BrandColors.orange,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF3D2A1C),
+    onPrimaryContainer = Color(0xFFF3D2B4),
+    secondary = Color(0xFF9BB0C2),
+    onSecondary = Color(0xFF15202C),
+    secondaryContainer = Color(0xFF323E4E),
+    onSecondaryContainer = Color(0xFFF0F3F7),
+    tertiary = BrandColors.orangeSoft,
+    onTertiary = Color(0xFF2A1A0C),
+    tertiaryContainer = Color(0xFF3A2818),
+    onTertiaryContainer = Color(0xFFF3D2B4),
     background = Color(0xFF121820),
     onBackground = DarkIslandPalette.onSurface,
     surface = DarkIslandPalette.surfaceElevated,
     onSurface = DarkIslandPalette.onSurface,
     surfaceVariant = Color(0xFF1E2836),
     onSurfaceVariant = DarkIslandPalette.onSurfaceMuted,
+    error = Color(0xFFE8A090),
+    onError = Color(0xFF4A1810),
+    errorContainer = Color(0xFF5A2A22),
+    onErrorContainer = Color(0xFFF5D0C8),
+    outline = DarkIslandPalette.fieldBorder,
+    outlineVariant = Color(0xFF3A4656),
 )
 
 @Composable

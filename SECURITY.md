@@ -4,9 +4,10 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.3.x   | Yes |
-| 0.2.x   | Best effort |
-| < 0.2   | No |
+| 0.5.x   | Yes |
+| 0.4.x   | Best effort |
+| 0.3.x   | Best effort |
+| < 0.3   | No |
 
 ## Reporting a vulnerability
 
@@ -25,9 +26,9 @@ We aim to acknowledge reports within a few business days.
 
 Never commit:
 
-- Signing keystores / passwords
-- `google-services.json` / Firebase keys
-- API tokens
+- Signing keystores / passwords (`*.jks`, `*.keystore`, `*.pepk`, `keystore.properties`)
+- `google-services.json` / Firebase keys (including `google-services.json.bak`)
+- API tokens / `.env`
 - `local.properties`
 
 Use CI secrets / local ignored files instead.

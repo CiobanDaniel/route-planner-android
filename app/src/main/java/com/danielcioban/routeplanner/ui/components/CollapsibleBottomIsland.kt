@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.theme.IslandColors
+import com.danielcioban.routeplanner.ui.theme.LocalReduceMotion
 import kotlinx.coroutines.launch
 
 /**
@@ -53,8 +54,12 @@ fun CollapsibleBottomIsland(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val density = LocalDensity.current
-    val collapsedPx = with(density) { collapsedHeight.toPx() }
-    val expandedPx = with(density) { maxExpandedHeight.toPx() }
+    val reduceMotion = LocalReduceMotion.current
+    val fontScale = density.fontScale.coerceIn(1f, 1.45f)
+    val scaledMax = maxExpandedHeight * fontScale
+    val scaledCollapsed = collapsedHeight * fontScale.coerceAtMost(1.2f)
+    val collapsedPx = with(density) { scaledCollapsed.toPx() }
+    val expandedPx = with(density) { scaledMax.toPx() }
     var expanded by rememberSaveable { mutableStateOf(true) }
     val heightPx = remember { Animatable(if (expanded) expandedPx else collapsedPx) }
     val scope = rememberCoroutineScope()
@@ -62,11 +67,16 @@ fun CollapsibleBottomIsland(
 
     fun settle(expand: Boolean) {
         expanded = expand
+        val target = if (expand) expandedPx else collapsedPx
         scope.launch {
-            heightPx.animateTo(
-                targetValue = if (expand) expandedPx else collapsedPx,
-                animationSpec = tween(220),
-            )
+            if (reduceMotion) {
+                heightPx.snapTo(target)
+            } else {
+                heightPx.animateTo(
+                    targetValue = target,
+                    animationSpec = tween(220),
+                )
+            }
         }
     }
 
@@ -121,7 +131,7 @@ fun CollapsibleBottomIsland(
                         .width(40.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(IslandColors.fieldBorder.copy(alpha = 0.85f)),
+                        .background(IslandColors.onSurfaceMuted.copy(alpha = 0.35f)),
                 )
             }
             Column(

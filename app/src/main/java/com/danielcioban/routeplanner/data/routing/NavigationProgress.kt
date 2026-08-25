@@ -16,13 +16,13 @@ data class NavGuidance(
 )
 
 object NavigationProgress {
-    private const val arrivalRadiusMeters = 40.0
     const val offRouteThresholdMeters = 50.0
 
     fun evaluate(
         route: DrivingRoute,
         user: LatLng,
         destination: LatLng,
+        arrivalRadiusMeters: Double = 40.0,
     ): NavGuidance {
         val toDest = GeoUtils.distanceMeters(
             user.latitude,

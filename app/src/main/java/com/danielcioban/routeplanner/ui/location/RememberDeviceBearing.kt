@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -92,6 +93,37 @@ fun rememberDeviceBearing(enabled: Boolean): Float? {
     }
 
     return bearing.takeUnless { it.isNaN() }
+}
+
+/** True when the compass reports low / unreliable accuracy. */
+@Composable
+fun rememberCompassAccuracyLow(enabled: Boolean): Boolean {
+    val context = LocalContext.current
+    var low by remember { mutableStateOf(false) }
+
+    DisposableEffect(enabled) {
+        if (!enabled) {
+            low = false
+            return@DisposableEffect onDispose { }
+        }
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+            ?: return@DisposableEffect onDispose { }
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) = Unit
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+                low = accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ||
+                    accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW
+            }
+        }
+        sensorManager.registerListener(
+            listener,
+            rotationSensor,
+            SensorManager.SENSOR_DELAY_UI,
+        )
+        onDispose { sensorManager.unregisterListener(listener) }
+    }
+    return low
 }
 
 /**

@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -25,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,6 +67,10 @@ fun MapLayersMenuDialog(
     onSelected: (MapViewMode) -> Unit,
     driveFollow: Boolean = false,
     onDriveFollowChange: ((Boolean) -> Unit)? = null,
+    northUp: Boolean = false,
+    onNorthUpChange: ((Boolean) -> Unit)? = null,
+    dataSaver: Boolean = false,
+    onReloadMap: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -75,6 +85,7 @@ fun MapLayersMenuDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .testTag("map_layers_menu")
                 .background(IslandColors.scrim.copy(alpha = 0.22f))
                 .statusBarsPadding()
                 .navigationBarsPadding()
@@ -89,6 +100,7 @@ fun MapLayersMenuDialog(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .width(260.dp)
+                    .heightIn(max = 560.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -97,7 +109,10 @@ fun MapLayersMenuDialog(
                 shape = RoundedCornerShape(22.dp),
                 contentPadding = 10.dp,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
                         text = stringResource(R.string.map_type_title),
                         style = MaterialTheme.typography.titleSmall,
@@ -105,7 +120,9 @@ fun MapLayersMenuDialog(
                         color = IslandColors.onSurface,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                     )
-                    MapViewMode.entries.forEach { mode ->
+                    MapViewMode.entries
+                        .filter { !(dataSaver && it == MapViewMode.SATELLITE) }
+                        .forEach { mode ->
                         IslandListItem(
                             selected = mode == selected,
                             onClick = {
@@ -169,6 +186,62 @@ fun MapLayersMenuDialog(
                                     if (it) onSelected(MapViewMode.DRIVING)
                                 },
                             )
+                        }
+                    }
+                    if (onNorthUpChange != null) {
+                        IslandListItem {
+                            Icon(
+                                Icons.Default.Explore,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.map_north_up),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = IslandColors.onSurface,
+                                )
+                                Text(
+                                    text = stringResource(R.string.map_north_up_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = IslandColors.onSurfaceMuted,
+                                )
+                            }
+                            Switch(
+                                checked = northUp,
+                                onCheckedChange = onNorthUpChange,
+                            )
+                        }
+                    }
+                    if (onReloadMap != null) {
+                        IslandListDivider()
+                        IslandListItem(
+                            onClick = {
+                                onReloadMap()
+                                onDismiss()
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.map_reload_assets),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = IslandColors.onSurface,
+                                )
+                                Text(
+                                    text = stringResource(R.string.map_reload_assets_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = IslandColors.onSurfaceMuted,
+                                )
+                            }
                         }
                     }
                 }

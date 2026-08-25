@@ -10,7 +10,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.R
+import com.danielcioban.routeplanner.ui.dev.DevLocationSim
 import com.danielcioban.routeplanner.ui.map.LastKnownMapCenter
 import com.danielcioban.routeplanner.ui.map.LatLng
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -42,6 +44,9 @@ fun rememberUserLocation(
     val scope = rememberCoroutineScope()
     val permission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
+    val simOn by DevLocationSim.enabled.collectAsStateWithLifecycle()
+    val simFix by DevLocationSim.fix.collectAsStateWithLifecycle()
+
     var coordinate by remember {
         mutableStateOf(LastKnownMapCenter.coordinate)
     }
@@ -50,7 +55,11 @@ fun rememberUserLocation(
 
     fun applyLocation(location: android.location.Location) {
         val previousBearing = coordinate?.bearingDegrees
-        val freshCourse = location.toBearingOrNull()
+        val freshCourse = if (DevLocationSim.isActive() && location.hasBearing()) {
+            location.bearing
+        } else {
+            location.toBearingOrNull()
+        }
         val accuracy = location.accuracy.takeIf { location.hasAccuracy() }
         val next = LatLng(
             latitude = location.latitude,
@@ -62,6 +71,7 @@ fun rememberUserLocation(
         coordinate = next
         LastKnownMapCenter.update(next)
         message = when {
+            DevLocationSim.isActive() -> null
             accuracy != null && accuracy > PoorGpsAccuracyMeters ->
                 context.getString(R.string.msg_poor_gps)
             else -> null
@@ -70,6 +80,12 @@ fun rememberUserLocation(
 
     fun refresh() {
         scope.launch {
+            if (DevLocationSim.isActive()) {
+                DevLocationSim.fix.value?.let { coordinate = it }
+                isLoading = false
+                message = null
+                return@launch
+            }
             if (!permission.status.isGranted && !context.hasLocationPermission()) {
                 message = context.getString(R.string.msg_location_permission_needed)
                 return@launch
@@ -87,16 +103,24 @@ fun rememberUserLocation(
         }
     }
 
-    LaunchedEffect(permission.status.isGranted) {
-        if (permission.status.isGranted || context.hasLocationPermission()) {
+    LaunchedEffect(simOn, simFix) {
+        if (simOn && simFix != null) {
+            coordinate = simFix
+            message = null
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(permission.status.isGranted, simOn) {
+        if (simOn || permission.status.isGranted || context.hasLocationPermission()) {
             refresh()
         } else if (autoRequest && !permission.status.shouldShowRationale) {
             permission.launchPermissionRequest()
         }
     }
 
-    DisposableEffect(permission.status.isGranted, highFrequency) {
-        if (!permission.status.isGranted && !context.hasLocationPermission()) {
+    DisposableEffect(permission.status.isGranted, highFrequency, simOn) {
+        if (!simOn && !permission.status.isGranted && !context.hasLocationPermission()) {
             return@DisposableEffect onDispose { }
         }
         val stop = context.requestLocationUpdates(highFrequency) { applyLocation(it) }
@@ -104,8 +128,8 @@ fun rememberUserLocation(
     }
 
     return UserLocationUi(
-        coordinate = coordinate,
-        hasPermission = permission.status.isGranted || context.hasLocationPermission(),
+        coordinate = if (simOn) simFix ?: coordinate else coordinate,
+        hasPermission = permission.status.isGranted || context.hasLocationPermission() || simOn,
         isLoading = isLoading,
         message = message,
         requestPermission = { permission.launchPermissionRequest() },

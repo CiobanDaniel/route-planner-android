@@ -1,36 +1,84 @@
-# Gradle files
+# What belongs on GitHub vs this PC: docs/README.md
+
+# Gradle
 .gradle/
 /.gradle-user-home/
 build/
+.kotlin/
 
-# Local configuration file (sdk path, etc)
+# Local SDK / endpoint overrides (Android Studio writes sdk.dir here)
 local.properties
+!local.properties.example
 
-# Log/OS Files
+# Self-hosted OSRM/Nominatim extracts (hundreds of MB)
+deploy/routing/data/
+
+# OS / editor junk
 *.log
+*.orig
+*~
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+hs_err_pid*
+replay_pid*
 
-# Android Studio generated files and folders
+# Android Studio / IntelliJ / Cursor
 captures/
 .externalNativeBuild/
 .cxx/
-*.aab
-*.apk
-output-metadata.json
-
-# IntelliJ
 *.iml
 .idea/
+.cursor/
+.vscode/
+*.code-workspace
 misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
 
-# Keystore files
+# Build artifacts (never commit)
+*.aab
+*.apk
+*.apks
+*.ap_
+output-metadata.json
+*.hprof
+mapping.txt
+seeds.txt
+unused.txt
+
+# Signing — upload keystores, Play App Signing exports, passwords
 *.jks
 *.keystore
+*.pepk
+*.p12
+*.bks
 keystore.properties
+signing.properties
+secrets.properties
+!keystore.properties.example
 
-# Google Services (e.g. APIs or Firebase)
+# Firebase / Google services (drop into app/ locally; do not commit)
 google-services.json
+google-services.json.*
+*-google-services.json
+firebase-debug.log
+firebase-debug.*.log
 
-# Android Profiling
-*.hprof
+# Env / tokens
+.env
+.env.*
+
+# Backups if someone saves them in the repo root
+*.rpenc
+/*.rpbackup.json
+
+# Real Play tester emails (template stays in git)
+docs/play/testers.csv
+
+# Captured Play screenshots (often show a real map / depot). README stays.
+docs/play/screenshots/*.png
+docs/play/screenshots/*.jpg
+docs/play/screenshots/*.jpeg
+docs/play/screenshots/*.webp

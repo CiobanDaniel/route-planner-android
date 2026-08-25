@@ -1,7 +1,10 @@
 package com.danielcioban.routeplanner.ui.location
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.danielcioban.routeplanner.ui.dev.DevLocationSim
 import com.danielcioban.routeplanner.ui.map.LatLng
 
 /** Speed (m/s) above which GPS course is preferred over compass. */
@@ -42,7 +45,9 @@ fun rememberMergedUserFix(
     compassBearing: Float?,
     active: Boolean,
 ): LatLng? {
+    val simOn by DevLocationSim.enabled.collectAsStateWithLifecycle()
     val base = coordinate ?: return null
+    if (simOn) return base
     return remember(base, compassBearing, active) {
         base.mergeWithCompass(
             compassBearing = compassBearing,

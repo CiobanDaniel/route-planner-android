@@ -1,22 +1,26 @@
 package com.danielcioban.routeplanner.ui.routes
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -45,6 +49,12 @@ import com.danielcioban.routeplanner.ui.components.StopNotesBanner
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import com.danielcioban.routeplanner.util.GeoUtils
 
+class DeliveryHudOps(
+    val onProof: (() -> Unit)? = null,
+    val onScan: (() -> Unit)? = null,
+    val onShareEta: (() -> Unit)? = null,
+)
+
 @Composable
 fun DeliveryHud(
     progress: DeliveryProgress,
@@ -59,19 +69,41 @@ fun DeliveryHud(
     onOpenQueue: () -> Unit,
     distanceUnit: DistanceUnit = DistanceUnit.METRIC,
     modifier: Modifier = Modifier,
+    roundTrip: Boolean = false,
+    onReturnToStart: (() -> Unit)? = null,
+    etaLabel: String? = null,
+    late: Boolean = false,
+    onPreviewPath: (() -> Unit)? = null,
+    onRunAgain: (() -> Unit)? = null,
+    markDoneEnabled: Boolean = true,
+    onFail: (() -> Unit)? = null,
+    onReschedule: (() -> Unit)? = null,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    enlargedActions: Boolean = false,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    markDoneLabelRes: Int = R.string.nav_mark_done,
+    ops: DeliveryHudOps = DeliveryHudOps(),
 ) {
     val resources = LocalContext.current.resources
     val next = progress.nextStop
+    val failAction = if (next?.isBreak == true) null else onFail
+    val doneLabelRes = if (next?.isBreak == true) R.string.nav_end_break else markDoneLabelRes
     val completed = (totalStops - progress.remaining).coerceAtLeast(0)
     val approximate = navigation.route?.isApproximate == true
 
     CollapsibleBottomIsland(
         modifier = modifier,
-        maxExpandedHeight = 420.dp,
-        collapsedHeight = 88.dp,
-        contentPadding = 16.dp,
+        maxExpandedHeight = 460.dp,
+        collapsedHeight = 112.dp,
+        contentPadding = 12.dp,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DeliveryHudHeader(
                 progress = progress,
                 totalStops = totalStops,
@@ -81,7 +113,12 @@ fun DeliveryHud(
             )
 
             when {
-                next == null -> DeliveryHudAllDone(onEndDelivery = onEndDelivery)
+                next == null -> DeliveryHudAllDone(
+                    onEndDelivery = onEndDelivery,
+                    roundTrip = roundTrip,
+                    onReturnToStart = onReturnToStart,
+                    onRunAgain = onRunAgain,
+                )
                 navigation.phase == NavigationPhase.LoadingRoute ->
                     DeliveryHudLoading(stopName = next.name)
                 navigation.phase == NavigationPhase.Error ->
@@ -92,15 +129,46 @@ fun DeliveryHud(
                         onMarkDone = onMarkDone,
                         onEndDelivery = onEndDelivery,
                         onOpenExternalMaps = onOpenExternalMaps,
+                        markDoneEnabled = markDoneEnabled,
+                        onFail = failAction,
+                        onReschedule = onReschedule,
+                        onPause = onPause,
+                        paused = paused,
+                        enlargedActions = enlargedActions,
+                        onShareSms = onShareSms,
+                        onOpenNextThree = onOpenNextThree,
+                        onCall = onCall,
+                        onDeferTasks = onDeferTasks,
+                        onAddStop = onAddStop,
+                        onSkipLater = onSkipLater,
+                        markDoneLabelRes = doneLabelRes,
+                        ops = ops,
                     )
                 navigation.phase == NavigationPhase.Arrived && progress.remaining == 0 ->
-                    DeliveryHudRouteFinished(onEndDelivery = onEndDelivery)
+                    DeliveryHudRouteFinished(
+                        onEndDelivery = onEndDelivery,
+                        onRunAgain = onRunAgain,
+                    )
                 navigation.phase == NavigationPhase.Arrived ->
                     DeliveryHudArrived(
                         stop = next,
                         onMarkDone = onMarkDone,
                         onEndDelivery = onEndDelivery,
                         onOpenExternalMaps = onOpenExternalMaps,
+                        markDoneEnabled = markDoneEnabled,
+                        onFail = failAction,
+                        onReschedule = onReschedule,
+                        onPause = onPause,
+                        paused = paused,
+                        enlargedActions = enlargedActions,
+                        onShareSms = onShareSms,
+                        onOpenNextThree = onOpenNextThree,
+                        onCall = onCall,
+                        onDeferTasks = onDeferTasks,
+                        onAddStop = onAddStop,
+                        onSkipLater = onSkipLater,
+                        markDoneLabelRes = doneLabelRes,
+                        ops = ops,
                     )
                 navigation.phase == NavigationPhase.Navigating && navigation.guidance != null -> {
                     val guidance = navigation.guidance
@@ -115,6 +183,20 @@ fun DeliveryHud(
                         onMarkDone = onMarkDone,
                         onEndDelivery = onEndDelivery,
                         onOpenExternalMaps = onOpenExternalMaps,
+                        markDoneEnabled = markDoneEnabled,
+                        onFail = failAction,
+                        onReschedule = onReschedule,
+                        onPause = onPause,
+                        paused = paused,
+                        enlargedActions = enlargedActions,
+                        onShareSms = onShareSms,
+                        onOpenNextThree = onOpenNextThree,
+                        onCall = onCall,
+                        onDeferTasks = onDeferTasks,
+                        onAddStop = onAddStop,
+                        onSkipLater = onSkipLater,
+                        markDoneLabelRes = doneLabelRes,
+                        ops = ops,
                     )
                 }
                 else ->
@@ -122,10 +204,27 @@ fun DeliveryHud(
                         progress = progress,
                         stop = next,
                         distanceFromYou = distanceFromYou,
+                        etaLabel = etaLabel,
+                        late = late,
                         onStartInAppNav = onStartInAppNav,
                         onMarkDone = onMarkDone,
                         onEndDelivery = onEndDelivery,
                         onOpenExternalMaps = onOpenExternalMaps,
+                        onPreviewPath = onPreviewPath,
+                        markDoneEnabled = markDoneEnabled,
+                        onFail = failAction,
+                        onReschedule = onReschedule,
+                        onPause = onPause,
+                        paused = paused,
+                        enlargedActions = enlargedActions,
+                        onShareSms = onShareSms,
+                        onOpenNextThree = onOpenNextThree,
+                        onCall = onCall,
+                        onDeferTasks = onDeferTasks,
+                        onAddStop = onAddStop,
+                        onSkipLater = onSkipLater,
+                        markDoneLabelRes = doneLabelRes,
+                        ops = ops,
                     )
             }
         }
@@ -155,7 +254,7 @@ private fun DeliveryHudHeader(
                 else -> stringResource(R.string.nav_next_stop_progress, completed + 1, totalStops)
             },
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
+            color = IslandColors.onSurfaceMuted,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
         )
@@ -181,7 +280,12 @@ private fun DeliveryHudHeader(
 }
 
 @Composable
-private fun ColumnScope.DeliveryHudAllDone(onEndDelivery: () -> Unit) {
+private fun ColumnScope.DeliveryHudAllDone(
+    onEndDelivery: () -> Unit,
+    roundTrip: Boolean,
+    onReturnToStart: (() -> Unit)?,
+    onRunAgain: (() -> Unit)?,
+) {
     Text(
         text = stringResource(R.string.nav_all_completed),
         style = MaterialTheme.typography.headlineSmall,
@@ -193,6 +297,28 @@ private fun ColumnScope.DeliveryHudAllDone(onEndDelivery: () -> Unit) {
         style = MaterialTheme.typography.bodyMedium,
         color = IslandColors.onSurfaceMuted,
     )
+    if (roundTrip && onReturnToStart != null) {
+        Button(
+            onClick = onReturnToStart,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Icon(Icons.Default.Navigation, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.nav_return_to_start))
+        }
+    }
+    if (onRunAgain != null) {
+        Button(
+            onClick = onRunAgain,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.action_run_again))
+        }
+    }
     OutlinedButton(
         onClick = onEndDelivery,
         modifier = Modifier.fillMaxWidth(),
@@ -235,6 +361,20 @@ private fun ColumnScope.DeliveryHudError(
     onMarkDone: () -> Unit,
     onEndDelivery: () -> Unit,
     onOpenExternalMaps: (StopEntity) -> Unit,
+    markDoneEnabled: Boolean,
+    onFail: (() -> Unit)?,
+    onReschedule: (() -> Unit)?,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    enlargedActions: Boolean = false,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    markDoneLabelRes: Int = R.string.nav_mark_done,
+    ops: DeliveryHudOps = DeliveryHudOps(),
 ) {
     Text(
         text = stop.name,
@@ -256,18 +396,49 @@ private fun ColumnScope.DeliveryHudError(
         Spacer(modifier = Modifier.width(8.dp))
         Text(stringResource(R.string.nav_retry_route))
     }
-    ExternalMapsRow(onClick = { onOpenExternalMaps(stop) })
-    ActionRow(onMarkDone = onMarkDone, onEndDelivery = onEndDelivery)
+    ActionRow(
+        onMarkDone = onMarkDone,
+        onEndDelivery = onEndDelivery,
+        markDoneEnabled = markDoneEnabled,
+        onFail = onFail,
+        onReschedule = onReschedule,
+        onPause = onPause,
+        paused = paused,
+        enlargedActions = enlargedActions,
+        onShareSms = onShareSms,
+        onOpenNextThree = onOpenNextThree,
+        onCall = onCall,
+        onDeferTasks = onDeferTasks,
+        onAddStop = onAddStop,
+        onSkipLater = onSkipLater,
+        markDoneLabelRes = markDoneLabelRes,
+        ops = ops,
+        onOpenExternal = { onOpenExternalMaps(stop) },
+    )
 }
 
 @Composable
-private fun ColumnScope.DeliveryHudRouteFinished(onEndDelivery: () -> Unit) {
+private fun ColumnScope.DeliveryHudRouteFinished(
+    onEndDelivery: () -> Unit,
+    onRunAgain: (() -> Unit)?,
+) {
     Text(
         text = stringResource(R.string.nav_finished_route),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         color = IslandColors.onSurface,
     )
+    if (onRunAgain != null) {
+        Button(
+            onClick = onRunAgain,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.action_run_again))
+        }
+    }
     OutlinedButton(
         onClick = onEndDelivery,
         modifier = Modifier.fillMaxWidth(),
@@ -285,11 +456,25 @@ private fun ColumnScope.DeliveryHudArrived(
     onMarkDone: () -> Unit,
     onEndDelivery: () -> Unit,
     onOpenExternalMaps: (StopEntity) -> Unit,
+    markDoneEnabled: Boolean,
+    onFail: (() -> Unit)?,
+    onReschedule: (() -> Unit)?,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    enlargedActions: Boolean = false,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    markDoneLabelRes: Int = R.string.nav_mark_done,
+    ops: DeliveryHudOps = DeliveryHudOps(),
 ) {
     Text(
         text = stringResource(R.string.nav_arrived),
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.secondary,
+        color = IslandColors.onSurfaceMuted,
         fontWeight = FontWeight.SemiBold,
     )
     Text(
@@ -301,20 +486,43 @@ private fun ColumnScope.DeliveryHudArrived(
     StopNotesBanner(
         notes = stop.notes,
         addressHint = stop.addressHint,
+        compact = true,
+        phone = stop.phone,
+        doorCode = stop.doorCode,
+        extraLine = if (stop.codAmount > 0.0) {
+            stringResource(
+                if (stop.codCollected) R.string.cod_banner_collected else R.string.cod_banner,
+                "%.2f".format(stop.codAmount),
+            )
+        } else {
+            ""
+        },
     )
     Button(
         onClick = onMarkDone,
+        enabled = markDoneEnabled,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
     ) {
         Icon(Icons.Default.CheckCircle, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(stringResource(R.string.nav_mark_done_next))
+        Text(stringResource(markDoneLabelRes))
     }
-    ExternalMapsRow(onClick = { onOpenExternalMaps(stop) })
-    TextButton(onClick = onEndDelivery, modifier = Modifier.align(Alignment.End)) {
-        Text(stringResource(R.string.nav_end_delivery))
-    }
+    OutcomeLinks(
+        onFail = if (stop.isBreak) null else onFail,
+        onReschedule = onReschedule,
+        onPause = onPause,
+        paused = paused,
+        onShareSms = onShareSms,
+        onOpenNextThree = onOpenNextThree,
+        onCall = onCall,
+        onDeferTasks = onDeferTasks,
+        onAddStop = onAddStop,
+        onSkipLater = onSkipLater,
+        ops = ops,
+        onOpenExternal = { onOpenExternalMaps(stop) },
+        onEndDelivery = onEndDelivery,
+    )
 }
 
 @Composable
@@ -329,6 +537,20 @@ private fun ColumnScope.DeliveryHudNavigating(
     onMarkDone: () -> Unit,
     onEndDelivery: () -> Unit,
     onOpenExternalMaps: (StopEntity) -> Unit,
+    markDoneEnabled: Boolean,
+    onFail: (() -> Unit)?,
+    onReschedule: (() -> Unit)?,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    enlargedActions: Boolean = false,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    markDoneLabelRes: Int = R.string.nav_mark_done,
+    ops: DeliveryHudOps = DeliveryHudOps(),
 ) {
     val step = guidance.currentStep
     if (approximate) {
@@ -373,9 +595,14 @@ private fun ColumnScope.DeliveryHudNavigating(
                     R.string.nav_then,
                     ManeuverFormatter.formatStep(resources, then),
                 ),
-                style = MaterialTheme.typography.bodyLarge,
-                color = IslandColors.onSurfaceMuted,
-                maxLines = 2,
+                style = if (enlargedActions) {
+                    MaterialTheme.typography.headlineSmall
+                } else {
+                    MaterialTheme.typography.bodyLarge
+                },
+                fontWeight = if (enlargedActions) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (enlargedActions) IslandColors.onSurface else IslandColors.onSurfaceMuted,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -397,9 +624,36 @@ private fun ColumnScope.DeliveryHudNavigating(
         notes = stop.notes,
         addressHint = stop.addressHint,
         compact = true,
+        phone = stop.phone,
+        doorCode = stop.doorCode,
+        extraLine = if (stop.codAmount > 0.0) {
+            stringResource(
+                if (stop.codCollected) R.string.cod_banner_collected else R.string.cod_banner,
+                "%.2f".format(stop.codAmount),
+            )
+        } else {
+            ""
+        },
     )
-    ActionRow(onMarkDone = onMarkDone, onEndDelivery = onEndDelivery)
-    ExternalMapsRow(onClick = { onOpenExternalMaps(stop) })
+    ActionRow(
+        onMarkDone = onMarkDone,
+        onEndDelivery = onEndDelivery,
+        markDoneEnabled = markDoneEnabled,
+        onFail = onFail,
+        onReschedule = onReschedule,
+        onPause = onPause,
+        paused = paused,
+        enlargedActions = enlargedActions,
+        onShareSms = onShareSms,
+        onOpenNextThree = onOpenNextThree,
+        onCall = onCall,
+        onDeferTasks = onDeferTasks,
+        onAddStop = onAddStop,
+        onSkipLater = onSkipLater,
+        markDoneLabelRes = markDoneLabelRes,
+        ops = ops,
+        onOpenExternal = { onOpenExternalMaps(stop) },
+    )
 }
 
 @Composable
@@ -407,10 +661,27 @@ private fun ColumnScope.DeliveryHudIdleNext(
     progress: DeliveryProgress,
     stop: StopEntity,
     distanceFromYou: String?,
+    etaLabel: String?,
+    late: Boolean,
     onStartInAppNav: () -> Unit,
     onMarkDone: () -> Unit,
     onEndDelivery: () -> Unit,
     onOpenExternalMaps: (StopEntity) -> Unit,
+    onPreviewPath: (() -> Unit)?,
+    markDoneEnabled: Boolean,
+    onFail: (() -> Unit)?,
+    onReschedule: (() -> Unit)?,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    enlargedActions: Boolean = false,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    markDoneLabelRes: Int = R.string.nav_mark_done,
+    ops: DeliveryHudOps = DeliveryHudOps(),
 ) {
     Text(
         text = stop.name,
@@ -423,18 +694,28 @@ private fun ColumnScope.DeliveryHudIdleNext(
     val prevLabel = progress.approxFromPrevious?.let {
         stringResource(R.string.nav_prev_approx, it)
     }
-    val meta = listOfNotNull(distanceFromYou, prevLabel).joinToString(" · ")
+    val meta = listOfNotNull(distanceFromYou, prevLabel, etaLabel).joinToString(" · ")
     if (meta.isNotBlank()) {
         Text(
             text = meta,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (late) MaterialTheme.colorScheme.error else IslandColors.onSurfaceMuted,
         )
     }
     StopNotesBanner(
         notes = stop.notes,
         addressHint = stop.addressHint,
+        compact = true,
+        phone = stop.phone,
+        doorCode = stop.doorCode,
+        extraLine = if (stop.codAmount > 0.0) {
+            stringResource(
+                if (stop.codCollected) R.string.cod_banner_collected else R.string.cod_banner,
+                "%.2f".format(stop.codAmount),
+            )
+        } else {
+            ""
+        },
     )
     val canNavigate = stop.latitude != null && stop.longitude != null
     Button(
@@ -453,47 +734,189 @@ private fun ColumnScope.DeliveryHudIdleNext(
             },
         )
     }
-    if (canNavigate) {
-        ExternalMapsRow(onClick = { onOpenExternalMaps(stop) })
-    }
-    ActionRow(onMarkDone = onMarkDone, onEndDelivery = onEndDelivery)
+    ActionRow(
+        onMarkDone = onMarkDone,
+        onEndDelivery = onEndDelivery,
+        markDoneEnabled = markDoneEnabled,
+        onFail = onFail,
+        onReschedule = onReschedule,
+        onPause = onPause,
+        paused = paused,
+        enlargedActions = enlargedActions,
+        onShareSms = onShareSms,
+        onOpenNextThree = onOpenNextThree,
+        onCall = onCall,
+        onDeferTasks = onDeferTasks,
+        onAddStop = onAddStop,
+        onSkipLater = onSkipLater,
+        markDoneLabelRes = markDoneLabelRes,
+        ops = ops,
+        onOpenExternal = if (canNavigate) {
+            { onOpenExternalMaps(stop) }
+        } else {
+            null
+        },
+        onPreviewPath = if (canNavigate) onPreviewPath else null,
+    )
 }
 
 @Composable
 private fun ActionRow(
     onMarkDone: () -> Unit,
     onEndDelivery: () -> Unit,
+    markDoneEnabled: Boolean = true,
+    onFail: (() -> Unit)? = null,
+    onReschedule: (() -> Unit)? = null,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    enlargedActions: Boolean = false,
+    markDoneLabelRes: Int = R.string.nav_mark_done,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    ops: DeliveryHudOps = DeliveryHudOps(),
+    onOpenExternal: (() -> Unit)? = null,
+    onPreviewPath: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         FilledTonalButton(
             onClick = onMarkDone,
-            modifier = Modifier.weight(1.2f),
-            shape = RoundedCornerShape(16.dp),
+            enabled = markDoneEnabled,
+            modifier = Modifier
+                .weight(1.2f)
+                .heightIn(min = 52.dp),
+            shape = RoundedCornerShape(if (enlargedActions) 20.dp else 16.dp),
         ) {
             Icon(Icons.Default.CheckCircle, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.nav_mark_done))
+            Text(stringResource(markDoneLabelRes))
         }
         OutlinedButton(
             onClick = onEndDelivery,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 52.dp),
             shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = IslandColors.onSurface,
+            ),
+            border = BorderStroke(1.dp, IslandColors.fieldBorder),
         ) {
             Icon(Icons.Default.Stop, contentDescription = null)
             Spacer(modifier = Modifier.width(6.dp))
             Text(stringResource(R.string.nav_end))
         }
     }
+    OutcomeLinks(
+        onFail = onFail,
+        onReschedule = onReschedule,
+        onPause = onPause,
+        paused = paused,
+        onShareSms = onShareSms,
+        onOpenNextThree = onOpenNextThree,
+        onCall = onCall,
+        onDeferTasks = onDeferTasks,
+        onAddStop = onAddStop,
+        onSkipLater = onSkipLater,
+        ops = ops,
+        onOpenExternal = onOpenExternal,
+        onPreviewPath = onPreviewPath,
+    )
 }
 
 @Composable
-private fun ExternalMapsRow(onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(stringResource(R.string.nav_open_external))
+private fun OutcomeLinks(
+    onFail: (() -> Unit)?,
+    onReschedule: (() -> Unit)?,
+    onPause: (() -> Unit)? = null,
+    paused: Boolean = false,
+    onShareSms: (() -> Unit)? = null,
+    onOpenNextThree: (() -> Unit)? = null,
+    onCall: (() -> Unit)? = null,
+    onDeferTasks: (() -> Unit)? = null,
+    onAddStop: (() -> Unit)? = null,
+    onSkipLater: (() -> Unit)? = null,
+    ops: DeliveryHudOps = DeliveryHudOps(),
+    onOpenExternal: (() -> Unit)? = null,
+    onPreviewPath: (() -> Unit)? = null,
+    onEndDelivery: (() -> Unit)? = null,
+) {
+    val hasLinks = onFail != null || onReschedule != null || onPause != null ||
+        onShareSms != null || onOpenNextThree != null || onCall != null ||
+        onDeferTasks != null || onAddStop != null || onSkipLater != null ||
+        ops.onProof != null || ops.onScan != null || ops.onShareEta != null ||
+        onOpenExternal != null || onPreviewPath != null || onEndDelivery != null
+    if (!hasLinks) return
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        if (onSkipLater != null) {
+            HudQuietLink(stringResource(R.string.hud_skip_later), onSkipLater)
+        }
+        if (onCall != null) {
+            HudQuietLink(stringResource(R.string.nav_call_stop), onCall)
+        }
+        if (onAddStop != null) {
+            HudQuietLink(stringResource(R.string.hud_add_stop), onAddStop)
+        }
+        if (ops.onScan != null) {
+            HudQuietLink(stringResource(R.string.hud_scan), ops.onScan)
+        }
+        if (ops.onProof != null) {
+            HudQuietLink(stringResource(R.string.hud_proof), ops.onProof)
+        }
+        if (ops.onShareEta != null) {
+            HudQuietLink(stringResource(R.string.hud_share_eta), ops.onShareEta)
+        }
+        if (onShareSms != null) {
+            HudQuietLink(stringResource(R.string.nav_share_sms), onShareSms)
+        }
+        if (onOpenNextThree != null) {
+            HudQuietLink(stringResource(R.string.nav_open_next_three), onOpenNextThree)
+        }
+        if (onPause != null) {
+            HudQuietLink(
+                stringResource(if (paused) R.string.nav_resume else R.string.nav_pause),
+                onPause,
+            )
+        }
+        if (onReschedule != null) {
+            HudQuietLink(stringResource(R.string.nav_reschedule_stop), onReschedule)
+        }
+        if (onFail != null) {
+            HudQuietLink(stringResource(R.string.nav_fail_stop), onFail)
+        }
+        if (onDeferTasks != null) {
+            HudQuietLink(stringResource(R.string.nav_defer_tasks), onDeferTasks)
+        }
+        if (onPreviewPath != null) {
+            HudQuietLink(stringResource(R.string.action_preview_path), onPreviewPath)
+        }
+        if (onOpenExternal != null) {
+            HudQuietLink(stringResource(R.string.nav_open_external), onOpenExternal)
+        }
+        if (onEndDelivery != null) {
+            HudQuietLink(stringResource(R.string.nav_end_delivery), onEndDelivery)
+        }
+    }
+}
+
+@Composable
+private fun HudQuietLink(label: String, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        colors = ButtonDefaults.textButtonColors(contentColor = IslandColors.onSurfaceMuted),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
     }
 }

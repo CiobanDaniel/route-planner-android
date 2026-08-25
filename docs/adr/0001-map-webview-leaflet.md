@@ -37,4 +37,4 @@ bridged from Compose via JavaScript interfaces.
 
 When targeting production scale offline maps, or when WebView gesture bugs block delivery UX.
 
-**Vector maps (OpenFreeMap / MapLibre GL)** would look more modern than raster tiles, but they would replace leaflet-rotate. Do not switch until heading is re-proven on device (see `docs/DEV_STATUS.md`).
+**Vector maps (OpenFreeMap / MapLibre GL)** would look more modern than raster tiles, but they would replace leaflet-rotate. Do not switch until heading is re-proven on device (see `docs/DEV_STATUS.md`). Everyday streets are Humanitarian OSM (HOT) rasters in Leaflet; dark / Night streets are CARTO Dark Matter; satellite/terrain stay Esri.

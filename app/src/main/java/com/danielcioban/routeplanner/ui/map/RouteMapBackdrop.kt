@@ -12,9 +12,16 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.danielcioban.routeplanner.BuildConfig
+import com.danielcioban.routeplanner.RoutePlannerApplication
+import com.danielcioban.routeplanner.data.settings.DistanceUnit
+import com.danielcioban.routeplanner.data.settings.SavedMapCamera
 import com.danielcioban.routeplanner.data.local.StopEntity
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import org.json.JSONObject
@@ -44,6 +51,9 @@ private class MapJsBridge(
     @Volatile
     var onFollowPaused: ((Boolean) -> Unit)? = null
 
+    @Volatile
+    var onMapViewChanged: ((SavedMapCamera) -> Unit)? = null
+
     @JavascriptInterface
     fun onMapLongClick(lat: Double, lon: Double) {
         mainHandler.post {
@@ -62,6 +72,13 @@ private class MapJsBridge(
     fun onFollowPaused(paused: Boolean) {
         mainHandler.post {
             onFollowPaused?.invoke(paused)
+        }
+    }
+
+    @JavascriptInterface
+    fun onMapViewChanged(lat: Double, lng: Double, zoom: Double) {
+        mainHandler.post {
+            onMapViewChanged?.invoke(SavedMapCamera(lat, lng, zoom))
         }
     }
 }
@@ -90,8 +107,20 @@ private class MapWebState {
     var fittedRouteSignature: String? = null
     var pushedUserKey: String? = null
     var pushedNavKey: String? = null
-    /** Once true, we have flown the camera to the user at least once for this WebView. */
     var hasFlownToUser: Boolean = false
+    var restoredCamera: Boolean = false
+    var lastSavedCamera: SavedMapCamera? = null
+    var lastClusterPins: Boolean = false
+    var lastNorthUp: Boolean = false
+    var lastImperialScale: Boolean = false
+    var lastNavDoor: LatLng? = null
+    var lastReloadEpoch: Long = 0L
+    var lastHighContrastPins: Boolean = false
+    var lastReduceMotion: Boolean = false
+    var pushedNorthUp: Boolean? = null
+    var pushedImperialScale: Boolean? = null
+    var pushedHighContrastPins: Boolean? = null
+    var pushedReduceMotion: Boolean? = null
 }
 
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
@@ -113,7 +142,18 @@ fun RouteMapBackdrop(
     onFollowPaused: ((Boolean) -> Unit)? = null,
     focusTarget: LatLng? = null,
     focusToken: Int = 0,
+    savedCamera: SavedMapCamera? = null,
+    onCameraMoved: ((SavedMapCamera) -> Unit)? = null,
+    clusterPins: Boolean = false,
+    navDoor: LatLng? = null,
 ) {
+    val app = LocalContext.current.applicationContext as RoutePlannerApplication
+    val appSettings by app.settingsRepository.settings.collectAsState(initial = app.latestSettings)
+    val reloadEpoch by MapAssetReload.epoch.collectAsState()
+    val northUp = appSettings.northUpWhileDriving
+    val imperialScale = appSettings.distanceUnit == DistanceUnit.IMPERIAL
+    val highContrastPins = appSettings.highContrastPins
+    val reduceMotion = appSettings.reduceMotion
     val pointsJson = remember(stops) { stopsToPointsGeoJson(stops) }
     val lineJson = remember(stops, showStraightStopLinks) {
         if (showStraightStopLinks) stopsToLineGeoJson(stops) else EMPTY_LINE_GEOJSON
@@ -121,9 +161,14 @@ fun RouteMapBackdrop(
     val bridge = remember { MapJsBridge(Handler(Looper.getMainLooper())) }
     val webState = remember { MapWebState() }
     val darkBasemap = !IslandColors.useHighlightShadow
+    webState.lastSavedCamera = savedCamera
     bridge.onMapLongClick = onMapLongClick
     bridge.onStopClick = onStopClick
     bridge.onFollowPaused = onFollowPaused
+    bridge.onMapViewChanged = { camera ->
+        LastKnownMapView.update(camera)
+        onCameraMoved?.invoke(camera)
+    }
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
@@ -135,6 +180,8 @@ fun RouteMapBackdrop(
                 )
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.userAgentString =
+                    settings.userAgentString + " RoutePlannerAndroid/" + BuildConfig.VERSION_NAME
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
                 settings.allowFileAccess = true
                 settings.loadWithOverviewMode = true
@@ -151,11 +198,16 @@ fun RouteMapBackdrop(
                         webState.pushedStyleId = null
                         webState.pushedThemeDark = null
                         webState.pushedDriveFollow = null
+                        webState.pushedNorthUp = null
+                        webState.pushedImperialScale = null
+                        webState.pushedHighContrastPins = null
+                        webState.pushedReduceMotion = null
                         webState.pushedRouteSignature = null
                         webState.fittedRouteSignature = null
                         webState.pushedUserKey = null
                         webState.pushedNavKey = null
                         webState.pushedFocusToken = -1
+                        restoreSavedCamera(view, webState)
                         pushAll(
                             view,
                             webState,
@@ -183,12 +235,52 @@ fun RouteMapBackdrop(
             webState.lastNavFitToken = navRouteFitToken
             webState.lastFocus = focusTarget
             webState.lastFocusToken = focusToken
+            webState.lastSavedCamera = savedCamera
+            webState.lastClusterPins = clusterPins
+            webState.lastNorthUp = northUp
+            webState.lastImperialScale = imperialScale
+            webState.lastHighContrastPins = highContrastPins
+            webState.lastReduceMotion = reduceMotion
+            webState.lastNavDoor = navDoor
+            if (reloadEpoch > 0L && reloadEpoch != webState.lastReloadEpoch) {
+                webState.lastReloadEpoch = reloadEpoch
+                webState.pageReady = false
+                webState.restoredCamera = false
+                webState.hasFlownToUser = false
+                webState.pushedStyleId = null
+                webState.pushedThemeDark = null
+                webState.pushedDriveFollow = null
+                webState.pushedNorthUp = null
+                webState.pushedImperialScale = null
+                webState.pushedHighContrastPins = null
+                webState.pushedReduceMotion = null
+                webState.pushedRouteSignature = null
+                webState.fittedRouteSignature = null
+                webState.pushedUserKey = null
+                webState.pushedNavKey = null
+                webState.pushedFocusToken = -1
+                webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+                webView.clearCache(true)
+                webView.loadUrl("file:///android_asset/map.html?v=$reloadEpoch")
+                return@AndroidView
+            }
             if (webState.pageReady) {
                 pushAll(webView, webState, forceFlyToUser = shouldFly)
                 webState.lastRecenterToken = recenterToken
             }
         },
+        onRelease = { webView ->
+            releaseMapWebView(webView)
+        },
     )
+}
+
+private fun releaseMapWebView(webView: WebView) {
+    webView.stopLoading()
+    webView.loadUrl("about:blank")
+    webView.removeJavascriptInterface("AndroidBridge")
+    (webView.parent as? ViewGroup)?.removeView(webView)
+    webView.destroy()
 }
 
 private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boolean) {
@@ -221,7 +313,39 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
         state.pushedDriveFollow = state.lastDriveFollow
     }
 
-    val routeSignature = state.lastPoints + "\n" + state.lastLine
+    if (state.pushedNorthUp != state.lastNorthUp) {
+        webView.evaluateJavascript(
+            "window.setNorthUp && setNorthUp(${state.lastNorthUp});",
+            null,
+        )
+        state.pushedNorthUp = state.lastNorthUp
+    }
+
+    if (state.pushedImperialScale != state.lastImperialScale) {
+        webView.evaluateJavascript(
+            "window.setImperialScale && setImperialScale(${state.lastImperialScale});",
+            null,
+        )
+        state.pushedImperialScale = state.lastImperialScale
+    }
+
+    if (state.pushedReduceMotion != state.lastReduceMotion) {
+        webView.evaluateJavascript(
+            "window.setReduceMotion && setReduceMotion(${state.lastReduceMotion});",
+            null,
+        )
+        state.pushedReduceMotion = state.lastReduceMotion
+    }
+
+    if (state.pushedHighContrastPins != state.lastHighContrastPins) {
+        webView.evaluateJavascript(
+            "window.setHighContrastPins && setHighContrastPins(${state.lastHighContrastPins});",
+            null,
+        )
+        state.pushedHighContrastPins = state.lastHighContrastPins
+    }
+
+    val routeSignature = state.lastPoints + "\n" + state.lastLine + "\n" + state.lastClusterPins
     val routeChanged = state.pushedRouteSignature != routeSignature
     val shouldFit = state.lastFitRequested &&
         !state.lastDriveFollow &&
@@ -229,21 +353,23 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
         state.fittedRouteSignature != routeSignature
 
     if (routeChanged) {
-        pushRoute(webView, state.lastPoints, state.lastLine, fitStops = shouldFit)
+        pushRoute(webView, state.lastPoints, state.lastLine, fitStops = shouldFit, clusterPins = state.lastClusterPins)
         state.pushedRouteSignature = routeSignature
         if (shouldFit) {
             state.fittedRouteSignature = routeSignature
         }
     }
 
-    val navKey = "${state.lastNavLine.hashCode()}:${state.lastNavFitToken}"
+    val door = state.lastNavDoor
+    val navKey = "${state.lastNavLine.hashCode()}:${state.lastNavFitToken}:${door?.latitude}:${door?.longitude}"
     if (state.pushedNavKey != navKey) {
         val line = state.lastNavLine
         if (line.isNullOrBlank()) {
             webView.evaluateJavascript("window.clearNavRoute && clearNavRoute();", null)
         } else {
-            val shouldFitNav = state.pushedNavKey?.substringAfterLast(':') != state.lastNavFitToken.toString()
-            pushNavRoute(webView, line, fitStops = shouldFitNav && !state.lastDriveFollow)
+        val previousFit = state.pushedNavKey?.split(":")?.getOrNull(1)
+        val shouldFitNav = previousFit != state.lastNavFitToken.toString()
+        pushNavRoute(webView, line, fitStops = shouldFitNav && !state.lastDriveFollow, door = door)
         }
         state.pushedNavKey = navKey
     }
@@ -252,7 +378,7 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
         val bearing = user.bearingDegrees?.takeIf { it >= 0f }
         val userKey = "${user.latitude},${user.longitude},${bearing ?: -1},${forceFlyToUser},${state.lastDriveFollow}"
         if (state.pushedUserKey == userKey && !forceFlyToUser && !state.pendingResumeFollow) return@let
-        // Always fly on the first fix for this map instance (empty routes, new screens).
+        // First GPS fly only when this WebView has no restored camera.
         val fly = forceFlyToUser || !state.hasFlownToUser
         pushUserLocation(webView, user, fly = fly, bearing = bearing)
         state.pushedUserKey = userKey
@@ -274,24 +400,41 @@ private fun pushAll(webView: WebView?, state: MapWebState, forceFlyToUser: Boole
     }
 }
 
+private fun restoreSavedCamera(webView: WebView?, state: MapWebState) {
+    val camera = state.lastSavedCamera ?: return
+    if (state.restoredCamera || webView == null) return
+    webView.evaluateJavascript(
+        "window.restoreMapView && restoreMapView(${camera.latitude}, ${camera.longitude}, ${camera.zoom});",
+        null,
+    )
+    state.restoredCamera = true
+    state.hasFlownToUser = true
+}
+
 private fun pushRoute(
     webView: WebView,
     pointsJson: String,
     lineJson: String,
     fitStops: Boolean,
+    clusterPins: Boolean = false,
 ) {
     val pointsArg = JSONObject.quote(pointsJson)
     val lineArg = JSONObject.quote(lineJson)
     webView.evaluateJavascript(
-        "window.setRoute && setRoute($pointsArg, $lineArg, ${if (fitStops) "true" else "false"});",
+        "window.setRoute && setRoute($pointsArg, $lineArg, ${if (fitStops) "true" else "false"}, ${if (clusterPins) "true" else "false"});",
         null,
     )
 }
 
-private fun pushNavRoute(webView: WebView, lineJson: String, fitStops: Boolean) {
+private fun pushNavRoute(webView: WebView, lineJson: String, fitStops: Boolean, door: LatLng?) {
     val lineArg = JSONObject.quote(lineJson)
+    val destArgs = if (door != null) {
+        ", ${door.latitude}, ${door.longitude}"
+    } else {
+        ", null, null"
+    }
     webView.evaluateJavascript(
-        "window.setNavRoute && setNavRoute($lineArg, ${if (fitStops) "true" else "false"});",
+        "window.setNavRoute && setNavRoute($lineArg, ${if (fitStops) "true" else "false"}$destArgs);",
         null,
     )
 }

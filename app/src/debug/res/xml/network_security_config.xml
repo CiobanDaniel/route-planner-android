@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Debug only: LAN / emulator HTTP to self-hosted OSRM + Nominatim.
+         Release Play builds must use HTTPS (see docs/SELF_HOST_ROUTING.md). -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
