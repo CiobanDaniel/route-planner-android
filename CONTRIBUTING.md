@@ -31,13 +31,14 @@ Prefer concise, imperative subjects:
 
 - `Add Nominatim address search`
 - `Fix AppCompat theme crash on launch`
-- `Bump version to 0.3.0`
+- `Bump version to 0.5.0`
 
 ## Before you open a PR
 
 - [ ] `./gradlew assembleDebug testDebugUnitTest lintDebug` passes locally (or CI is green)
-- [ ] No secrets committed (`local.properties`, keystores, `google-services.json`)
-- [ ] User-facing strings added to `values/strings.xml` **and** `values-ro/strings.xml` when UI text changes
+- [ ] Room schema JSON under `app/schemas/` is committed when the `@Database` version changes
+- [ ] No secrets committed (`local.properties`, keystores, `google-services.json`, Play screenshot PNGs, real tester emails)
+- [ ] User-facing strings added to `values/strings.xml` **and** every shipped locale (`values-ro`, `values-fr`, `values-de`, `values-it`, `values-es`, `values-pt`) when UI text changes
 - [ ] `CHANGELOG.md` updated under `[Unreleased]` for user-visible or process-visible changes
 - [ ] Version bumped in `app/build.gradle.kts` only when cutting a release (maintainers)
 
@@ -55,3 +56,5 @@ Prefer concise, imperative subjects:
 ## Questions
 
 Open a GitHub Discussion or Issue. For security problems, see [SECURITY.md](SECURITY.md).
+
+Which planning files belong on `main` vs stay on this PC: [docs/README.md](docs/README.md).

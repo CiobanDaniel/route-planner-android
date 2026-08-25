@@ -30,7 +30,7 @@ class RouteRepositoryLibraryTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = RouteRepository(db)
+        repository = RouteRepository(db, routingClient = null)
     }
 
     @After
@@ -128,14 +128,17 @@ class RouteRepositoryLibraryTest {
     }
 
     @Test
-    fun deleteEverywhere_removesLibraryAndAllRouteStops() = runTest {
+    fun deleteEverywhere_trashesLibraryAndRemovesRouteStops() = runTest {
         val libraryId = repository.upsertLibraryStop("Yard", "", "", 45.0, 21.0)
         val a = repository.createRoute("A", "", emptyList())
         repository.addStopFromLibrary(a, libraryId)
 
         repository.deleteLibraryStop(libraryId, LibraryDeleteScope.Everywhere)
 
-        assertNull(repository.getLibraryStop(libraryId))
+        val tombstone = repository.getLibraryStop(libraryId)
+        assertNotNull(tombstone)
+        assertNotNull(tombstone!!.deletedAtEpochMs)
+        assertTrue(repository.observeStopLibrary().first().none { it.id == libraryId })
         assertTrue(db.routeDao().getStopsForRoute(a).isEmpty())
     }
 
@@ -160,5 +163,55 @@ class RouteRepositoryLibraryTest {
         assertEquals(1, tasks.size)
         assertEquals("Scan", tasks.first().title)
         assertEquals("A renamed", db.routeDao().getStop(stopId)!!.name)
+    }
+
+    @Test
+    fun addFromLibrary_copiesDefaultTasksAndBumpsUse() = runTest {
+        val libraryId = repository.upsertLibraryStop("Shop", "", "", 45.0, 21.0)
+        repository.addLibraryDefaultTask(libraryId, "Scan COD", required = true)
+        val routeId = repository.createRoute("R", "", emptyList())
+        val added = repository.addStopFromLibrary(routeId, libraryId) as AddFromLibraryResult.Added
+        val tasks = repository.observeStopTasks(added.stopId).first()
+        assertEquals(1, tasks.size)
+        assertEquals("Scan COD", tasks.first().title)
+        assertTrue(tasks.first().isRequired)
+        val lib = repository.getLibraryStop(libraryId)!!
+        assertEquals(1, lib.useCount)
+        assertTrue(lib.lastUsedAtEpochMs > 0L)
+        assertTrue(lib.plusCode.isNotBlank())
+    }
+
+    @Test
+    fun mergeNearbyDuplicates_keepsOnePinAndReassignsStops() = runTest {
+        val keepId = repository.upsertLibraryStop("Cafe", "Main", "", 45.75000, 21.23000)
+        val dropId = repository.upsertLibraryStop("Cafe", "", "note", 45.75010, 21.23010)
+        val routeId = repository.createRoute("R", "", emptyList())
+        repository.addStopFromLibrary(routeId, dropId)
+        val merged = repository.mergeNearbyLibraryDuplicates()
+        assertEquals(1, merged)
+        val remaining = listOfNotNull(
+            repository.getLibraryStop(keepId),
+            repository.getLibraryStop(dropId),
+        )
+        assertEquals(1, remaining.size)
+        assertTrue(remaining.single().notes.contains("note") || remaining.single().addressHint.contains("Main"))
+        assertEquals(remaining.single().id, db.routeDao().getStopsForRoute(routeId).single().libraryStopId)
+    }
+
+    @Test
+    fun importCsvIntoExistingRoute_appendsStops() = runTest {
+        val routeId = repository.createRoute("Existing", "", emptyList())
+        val csv = """
+            name,latitude,longitude,tags
+            Bakery,45.75,21.23,north
+        """.trimIndent()
+        val result = repository.importStopsCsvIntoRoute(routeId, csv)
+        assertEquals(1, result.imported)
+        assertEquals(routeId, result.routeId)
+        assertEquals(1, db.routeDao().getStopsForRoute(routeId).size)
+        val lib = repository.getLibraryStop(
+            db.routeDao().getStopsForRoute(routeId).first().libraryStopId!!,
+        )!!
+        assertEquals("north", lib.tags)
     }
 }

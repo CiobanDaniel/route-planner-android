@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy policy — Route Planner</title>
+  <style>
+    :root { color-scheme: light dark; --accent: #E86A17; --text: #152033; --muted: #3A4658; --bg: #F7F8FA; }
+    @media (prefers-color-scheme: dark) {
+      :root { --text: #F2F5F9; --muted: #D5DCE6; --bg: #121820; }
+    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+    main { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    h1 { font-size: 1.75rem; margin: 0 0 0.5rem; }
+    h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; }
+    .accent { color: var(--accent); }
+    .muted { color: var(--muted); }
+    table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+    th, td { border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent); padding: 0.45rem 0.55rem; text-align: left; vertical-align: top; }
+    .note { border-left: 3px solid var(--accent); padding: 0.6rem 0.85rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="accent">Route Planner</p>
+    <h1>Privacy policy</h1>
+    <p class="muted">App: Route Planner (<code>com.danielcioban.routeplanner</code>)<br />
+      Operator: Cioban Daniel (update with legal entity when incorporated)<br />
+      Last updated: 2026-08-25</p>
+    <div class="note muted">
+      Have counsel review this page before a commercial Play listing or collecting accounts.
+      Internal testing can use this hosted URL. Do not treat a GitHub markdown file as the Play privacy URL.
+    </div>
+
+    <h2>What the app stores on the device</h2>
+    <ul>
+      <li>Routes, stops, notes, and completion state (Room database)</li>
+      <li>App settings (theme, language, units, keep-screen-on, speak turns, and similar)</li>
+      <li>Active delivery session id (DataStore)</li>
+      <li>Trip history (local Room log)</li>
+      <li>Last routing error snippet used only if you tap <strong>Report a problem</strong></li>
+      <li>Ongoing trip notification and lock-screen HUD while a drive is active (next stop name, remaining distance)</li>
+    </ul>
+    <p>This data stays on the device unless you share a route (system share sheet) or send a problem report email you compose yourself.</p>
+
+    <h2>What leaves the device</h2>
+    <table>
+      <thead>
+        <tr><th>Destination</th><th>Purpose</th><th>Data</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>OpenStreetMap / tile providers</td>
+          <td>Show the map</td>
+          <td>Approximate map viewport requests</td>
+        </tr>
+        <tr>
+          <td>OSRM</td>
+          <td>Driving directions</td>
+          <td>Start/end coordinates</td>
+        </tr>
+        <tr>
+          <td>Nominatim</td>
+          <td>Address search</td>
+          <td>Search query text</td>
+        </tr>
+        <tr>
+          <td>Google Maps / Waze (optional)</td>
+          <td>External navigation</td>
+          <td>Destination coordinates via intent</td>
+        </tr>
+        <tr>
+          <td>Your email app (optional)</td>
+          <td>Report a problem</td>
+          <td>App version, device model, last routing error, plus whatever you type</td>
+        </tr>
+        <tr>
+          <td>Google Play Vitals</td>
+          <td>Stability on Play installs</td>
+          <td>Crash and ANR metrics collected by Play — not Firebase. No in-app account.</td>
+        </tr>
+        <tr>
+          <td>Firebase Crashlytics (optional)</td>
+          <td>Deobfuscated crash stacks for the maintainer</td>
+          <td>Only if this build includes <code>google-services.json</code>. Stack traces and device model. No Analytics. No Auth.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>No account system is shipped. When authentication or cloud sync is added, this policy must be updated.</p>
+
+    <h2>Location</h2>
+    <p>Precise location is used to center the map, add GPS stops, and navigate, including a foreground location service while a trip is active. Permission is requested at runtime. Location is not sold.</p>
+
+    <h2>Children’s privacy</h2>
+    <p>Not directed at children under 13 (or local equivalent).</p>
+
+    <h2>Contact</h2>
+    <p>Privacy questions: maintainer contact on the GitHub profile for CiobanDaniel. In-app <strong>Report a problem</strong> (About and Settings) opens an email draft with version and last routing error.</p>
+
+    <h2>Română (pe scurt)</h2>
+    <p class="muted">Datele de rute rămân pe telefon. Harta, OSRM și Nominatim primesc coordonate sau text de căutare. Play Vitals măsoară crash-uri pe instalările din Play. Crashlytics e opțional și doar pentru stive de crash, fără Analytics sau conturi. Locația precisă e pentru navigație, nu se vinde.</p>
+
+    <h2>Changes</h2>
+    <p>Material changes bump the “Last updated” date and are noted in release notes when the app is commercially distributed.</p>
+  </main>
+</body>
+</html>

@@ -24,4 +24,12 @@ data class StopLibraryEntity(
     val createdAtEpochMs: Long = System.currentTimeMillis(),
     val updatedAtEpochMs: Long = System.currentTimeMillis(),
     val deletedAtEpochMs: Long? = null,
+    /** Comma-separated tags / zones. */
+    val tags: String = "",
+    val plusCode: String = "",
+    val what3words: String = "",
+    val lastUsedAtEpochMs: Long = 0L,
+    val useCount: Int = 0,
+    val defaultGeofenceRadiusMeters: Int? = null,
+    val isFavorite: Boolean = false,
 )

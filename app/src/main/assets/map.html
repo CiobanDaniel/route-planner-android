@@ -8,17 +8,61 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
     <style>
-        html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #dfe6ee; }
-        .leaflet-container { background: #dfe6ee; }
+        html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #f4efe6; }
+        .leaflet-container { background: #f4efe6; }
         body.theme-dark, body.theme-dark .leaflet-container { background: #161c24; }
         /* Tiles only — never filter markers / nav line / satellite.
-           Map + Driving use Esri World Street Map (dark-gray roads).
-           Dark theme inverts those street tiles so roads stay light on land. */
-        body.driving-style.style-streets:not(.theme-dark) .leaflet-tile-pane {
-            filter: contrast(1.18) saturate(1.1);
+           Light Map + Driving: HOT OSM. Dark / Night: Carto Dark Matter (not inverted HOT). */
+        body.driving-style.style-streets:not(.night-tiles) .leaflet-tile-pane {
+            filter: contrast(1.12) saturate(1.12);
         }
-        body.theme-dark.style-streets .leaflet-tile-pane {
-            filter: invert(0.88) hue-rotate(180deg) brightness(1.06) contrast(1.18) saturate(0.55);
+        .leaflet-tile-container img { image-rendering: auto; }
+        .leaflet-control-attribution { display: none; }
+        #map-hud {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 500;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        #north-compass {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background: rgba(21, 32, 51, 0.88);
+            color: #fff;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font: 800 13px/1 system-ui, sans-serif;
+        }
+        #north-needle {
+            transform-origin: 50% 50%;
+        }
+        body.follow-active:not(.north-up) #north-compass {
+            width: 28px;
+            height: 28px;
+            opacity: 0.72;
+            font-size: 11px;
+        }
+        #scale-bar {
+            background: rgba(21, 32, 51, 0.88);
+            color: #fff;
+            border-radius: 8px;
+            padding: 4px 8px 6px;
+            font: 600 11px/1.2 system-ui, sans-serif;
+            min-width: 48px;
+        }
+        #scale-line {
+            height: 3px;
+            background: #fff;
+            border-radius: 1px;
+            margin-bottom: 4px;
         }
         .leaflet-tile-container img { image-rendering: auto; }
         .leaflet-control-attribution { display: none; }
@@ -46,6 +90,35 @@
         .stop-marker.done {
             background: #2F8A57;
         }
+        body.high-contrast-pins .stop-marker {
+            background: #0072B2;
+            border: 3px solid #111;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            font: 700 11px/18px system-ui, sans-serif;
+            box-shadow: 0 0 0 1px #fff, 0 1px 5px rgba(0,0,0,0.55);
+        }
+        body.high-contrast-pins .stop-marker.done {
+            background: #009E73;
+            border-radius: 50%;
+        }
+        body.high-contrast-pins .cluster-marker {
+            background: #0072B2;
+            border: 3px solid #111;
+            box-shadow: 0 0 0 1px #fff, 0 1px 6px rgba(0,0,0,0.55);
+        }
+        .cluster-marker {
+            background: #E86A17;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            color: #fff;
+            font: 700 12px/28px system-ui, sans-serif;
+            text-align: center;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.45);
+        }
         .user-marker-wrap { background: transparent; border: none; }
         .user-dot {
             width: 16px;
@@ -72,6 +145,10 @@
 </head>
 <body>
 <div id="map"></div>
+<div id="map-hud" aria-hidden="true">
+    <div id="north-compass"><div id="north-needle">N</div></div>
+    <div id="scale-bar"><div id="scale-line"></div><div id="scale-label">100 m</div></div>
+</div>
 <script>
     // Canvas vectors stay locked to tiles during pinch/pan better than SVG with leaflet-rotate.
     var vectorRenderer = L.canvas({ padding: 0.5 });
@@ -103,22 +180,47 @@
     var currentBase = null;
     var baseLayers = {};
 
-    function streetLayer() {
-        // Same tiles in light and dark. Dark contrast comes from CSS invert on .style-streets.
+    function hotStreetLayer() {
+        // HOT style: thick colored roads (better last-mile contrast than Esri gray).
         return L.tileLayer(
-            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
             Object.assign({
-                attribution: 'Tiles &copy; Esri',
-                maxZoom: 19,
-                maxNativeZoom: 19
+                attribution: '&copy; OpenStreetMap contributors, Tiles HOT / OSM France',
+                maxZoom: 20,
+                maxNativeZoom: 20,
+                subdomains: 'abc'
             }, TILE_OPTS)
         );
     }
 
+    function nightStreetLayer() {
+        return L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            Object.assign({
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                maxZoom: 20,
+                maxNativeZoom: 20,
+                subdomains: 'abcd'
+            }, TILE_OPTS)
+        );
+    }
+
+    function usesNightTiles() {
+        return currentStyleId === 'night' ||
+            (mapTheme === 'dark' && (currentStyleId === 'map' || currentStyleId === 'driving'));
+    }
+
+    function streetLayer() {
+        return usesNightTiles() ? nightStreetLayer() : hotStreetLayer();
+    }
+
     function syncBodyClasses() {
         document.body.classList.toggle('theme-dark', mapTheme === 'dark');
-        document.body.classList.toggle('style-streets', currentStyleId === 'map' || currentStyleId === 'driving');
+        document.body.classList.toggle('style-streets', currentStyleId === 'map' || currentStyleId === 'driving' || currentStyleId === 'night');
         document.body.classList.toggle('driving-style', currentStyleId === 'driving');
+        document.body.classList.toggle('night-tiles', usesNightTiles());
+        document.body.classList.toggle('north-up', northUp);
+        document.body.classList.toggle('follow-active', driveFollow && !followPaused);
     }
 
     function esriLayer(service, extra) {
@@ -133,10 +235,10 @@
     }
 
     function buildBaseLayers() {
-        var streets = streetLayer();
         return {
-            map: L.layerGroup([streets]),
+            map: L.layerGroup([streetLayer()]),
             driving: L.layerGroup([streetLayer()]),
+            night: L.layerGroup([nightStreetLayer()]),
             satellite: L.layerGroup([
                 esriLayer('World_Imagery'),
                 esriLayer('Reference/World_Transportation', { opacity: 0.88, maxZoom: 19 }),
@@ -188,6 +290,8 @@
     var longPressStart = null;
     var driveFollow = false;
     var followPaused = false;
+    var northUp = false;
+    var imperialScale = false;
     var lastBearing = 0;
     var lastUserLatLng = null;
     var navCoords = null;
@@ -211,6 +315,7 @@
         if (driveFollow && !followPaused) {
             followPaused = true;
             notifyFollowPaused(true);
+            syncBodyClasses();
         }
         clearLongPress();
     }
@@ -236,6 +341,7 @@
         // so a two-finger map twist does not drag the chevron with the tiles.
         updateUserMarkerVisual();
         redrawVectors();
+        updateMapHud();
     }
 
     map.on('dragstart', beginGesture);
@@ -250,7 +356,10 @@
         endGesture();
         onMapRotated();
     });
-    map.on('moveend', onMapRotated);
+    map.on('moveend', function () {
+        onMapRotated();
+        reportView();
+    });
     map.on('rotate', onMapRotated);
 
     map.getContainer().addEventListener('touchstart', function (e) {
@@ -266,9 +375,97 @@
 
     function applyMapBearing() {
         // Avoid truthiness check — bearing 0 (north) is valid and must still be applied.
-        if (typeof map.setBearing === 'function' && Number.isFinite(lastBearing)) {
+        if (typeof map.setBearing !== 'function') return;
+        if (northUp) {
+            map.setBearing(0);
+            return;
+        }
+        if (driveFollow && Number.isFinite(lastBearing)) {
             map.setBearing(leafletBearingFromHeading(lastBearing));
         }
+    }
+
+    function setNorthUp(enabled) {
+        northUp = !!enabled;
+        syncBodyClasses();
+        if (driveFollow && !followPaused) applyMapBearing();
+        updateUserMarkerVisual();
+        updateMapHud();
+    }
+
+    function setImperialScale(enabled) {
+        imperialScale = !!enabled;
+        updateMapHud();
+    }
+
+    var reduceMotion = false;
+    var highContrastPins = false;
+
+    function setReduceMotion(enabled) {
+        reduceMotion = !!enabled;
+    }
+
+    function setHighContrastPins(enabled) {
+        var next = !!enabled;
+        if (highContrastPins === next) return;
+        highContrastPins = next;
+        document.body.classList.toggle('high-contrast-pins', highContrastPins);
+        markersLayer.clearLayers();
+        drawStopMarkers(lastRoutePoints, null);
+    }
+
+    function updateMapHud() {
+        syncBodyClasses();
+        var needle = document.getElementById('north-needle');
+        if (needle && typeof map.getBearing === 'function') {
+            var mapBearing = map.getBearing() || 0;
+            needle.style.transform = 'rotate(' + mapBearing + 'deg)';
+        }
+        var line = document.getElementById('scale-line');
+        var label = document.getElementById('scale-label');
+        if (!line || !label || typeof map.distance !== 'function') return;
+        var size = map.getSize();
+        var y = size.y / 2;
+        var maxPx = 100;
+        var meters = map.distance(
+            map.containerPointToLatLng([0, y]),
+            map.containerPointToLatLng([maxPx, y])
+        );
+        if (!Number.isFinite(meters) || meters <= 0) return;
+        var nice = niceScale(meters, imperialScale);
+        var width = Math.max(24, Math.min(maxPx, maxPx * (nice.meters / meters)));
+        line.style.width = width + 'px';
+        label.textContent = nice.label;
+    }
+
+    function niceScale(metersFor100px, imperial) {
+        if (imperial) {
+            var feet = metersFor100px / 0.3048;
+            var stepsFt = [50, 100, 200, 500, 1000, 2000, 5000];
+            if (feet >= 2500) {
+                var milesFor100 = metersFor100px / 1609.34;
+                var stepsMi = [0.25, 0.5, 1, 2, 5, 10];
+                var mi = stepsMi[0];
+                for (var i = 0; i < stepsMi.length; i++) {
+                    if (stepsMi[i] <= milesFor100) mi = stepsMi[i];
+                }
+                return { meters: mi * 1609.34, label: mi < 1 ? (mi * 5280) + ' ft' : mi + ' mi' };
+            }
+            var ft = stepsFt[0];
+            for (var j = 0; j < stepsFt.length; j++) {
+                if (stepsFt[j] <= feet) ft = stepsFt[j];
+            }
+            return { meters: ft * 0.3048, label: ft >= 1000 ? (ft / 5280).toFixed(2).replace(/0+$/, '').replace(/\.$/, '') + ' mi' : ft + ' ft' };
+        }
+        var steps = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+        var pick = steps[0];
+        for (var k = 0; k < steps.length; k++) {
+            if (steps[k] <= metersFor100px) pick = steps[k];
+        }
+        return {
+            meters: pick,
+            label: pick >= 1000 ? (pick / 1000) + ' km' : pick + ' m'
+        };
     }
 
     function setDriveFollow(enabled) {
@@ -289,18 +486,22 @@
             map.setBearing(0);
             updateUserMarkerVisual();
         }
+        syncBodyClasses();
+        updateMapHud();
     }
 
     function resumeDriveFollow() {
         followPaused = false;
         gestureDepth = 0;
         notifyFollowPaused(false);
+        syncBodyClasses();
         if (driveFollow && lastUserLatLng) {
             applyMapBearing();
             map.setView(lastUserLatLng, Math.max(map.getZoom(), 17), { animate: false });
             applyMapBearing();
             updateUserMarkerVisual();
         }
+        updateMapHud();
     }
 
     function updateUserMarkerVisual() {
@@ -375,11 +576,31 @@
     map.getContainer().addEventListener('touchmove', clearLongPress, { passive: true });
     map.getContainer().addEventListener('touchcancel', clearLongPress, { passive: true });
 
+    var suppressViewCallback = false;
+
+    function restoreMapView(lat, lng, zoom) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) return;
+        suppressViewCallback = true;
+        map.setView(L.latLng(lat, lng), zoom, { animate: false });
+        hasCenteredOnUser = true;
+        suppressViewCallback = false;
+    }
+
+    function reportView() {
+        if (suppressViewCallback || driveFollow) return;
+        var z = map.getZoom();
+        if (z < 4) return;
+        var c = map.getCenter();
+        if (window.AndroidBridge && AndroidBridge.onMapViewChanged) {
+            AndroidBridge.onMapViewChanged(c.lat, c.lng, z);
+        }
+    }
+
     function flyToPlace(lat, lng, zoom) {
         followPaused = true;
         notifyFollowPaused(true);
         var z = (typeof zoom === 'number' && !isNaN(zoom)) ? zoom : 16;
-        map.setView(L.latLng(lat, lng), z, { animate: true });
+        map.setView(L.latLng(lat, lng), z, { animate: !reduceMotion });
     }
 
     function setUserLocation(lat, lng, fly, bearing) {
@@ -442,7 +663,7 @@
         };
     }
 
-    function setNavRoute(lineJson, fit) {
+    function setNavRoute(lineJson, fit, destLat, destLng) {
         navLayer.clearLayers();
         navHalo = null;
         navLine = null;
@@ -457,6 +678,15 @@
         navCoords = coords;
         navHalo = L.polyline(coords, polylineOpts('#FFFFFF', 12, 0.92)).addTo(navLayer);
         navLine = L.polyline(coords, polylineOpts('#E86A17', 7, 1)).addTo(navLayer);
+        if (Number.isFinite(destLat) && Number.isFinite(destLng)) {
+            var snap = L.latLng(coords[coords.length - 1][0], coords[coords.length - 1][1]);
+            var door = L.latLng(destLat, destLng);
+            if (snap.distanceTo(door) > 18) {
+                L.polyline([snap, door], Object.assign(polylineOpts('#5B6B7A', 4, 0.95), {
+                    dashArray: '7 8'
+                })).addTo(navLayer);
+            }
+        }
         navLayer.bringToFront();
         if (fit && !driveFollow) {
             map.fitBounds(coords, { padding: [80, 80], maxZoom: 16, animate: false });
@@ -503,11 +733,16 @@
         navCoords = null;
     }
 
-    function setRoute(pointsJson, lineJson, fit) {
+    var lastRoutePoints = { type: 'FeatureCollection', features: [] };
+    var clusterPinsEnabled = false;
+
+    function setRoute(pointsJson, lineJson, fit, cluster) {
+        lastRoutePoints = JSON.parse(pointsJson);
+        clusterPinsEnabled = !!cluster;
         markersLayer.clearLayers();
         lineLayer.clearLayers();
 
-        var points = JSON.parse(pointsJson);
+        var points = lastRoutePoints;
         var line = JSON.parse(lineJson);
         var bounds = [];
 
@@ -522,30 +757,7 @@
             }
         }
 
-        (points.features || []).forEach(function (feature) {
-            var lat = feature.geometry.coordinates[1];
-            var lon = feature.geometry.coordinates[0];
-            var id = feature.properties.id;
-            var name = feature.properties.name || '';
-            bounds.push([lat, lon]);
-
-            var completed = !!feature.properties.completed;
-            var seq = (typeof feature.properties.position === 'number'
-                ? feature.properties.position
-                : 0) + 1;
-            var icon = L.divIcon({
-                className: '',
-                html: '<div class="stop-marker' + (completed ? ' done' : '') + '">' + seq + '</div>',
-                iconSize: [22, 22],
-                iconAnchor: [11, 11]
-            });
-            var marker = L.marker([lat, lon], { icon: icon });
-            marker.bindTooltip(name, { direction: 'top', offset: [0, -10] });
-            marker.on('click', function () {
-                if (window.AndroidBridge) AndroidBridge.onStopClick(id);
-            });
-            marker.addTo(markersLayer);
-        });
+        drawStopMarkers(points, bounds);
 
         if (fit && !driveFollow && bounds.length > 0) {
             if (bounds.length === 1) {
@@ -556,6 +768,125 @@
         }
     }
 
+    function drawStopMarkers(points, bounds) {
+        var features = points.features || [];
+        features.forEach(function (feature) {
+            var lat = feature.geometry.coordinates[1];
+            var lon = feature.geometry.coordinates[0];
+            if (bounds) bounds.push([lat, lon]);
+        });
+        if (!clusterPinsEnabled || map.getZoom() >= 15 || features.length < 12) {
+            spreadClosePins(features).forEach(addStopMarker);
+            return;
+        }
+        var cell = 70;
+        var buckets = {};
+        features.forEach(function (feature) {
+            var latlng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+            var pt = map.latLngToLayerPoint(latlng);
+            var key = Math.floor(pt.x / cell) + ':' + Math.floor(pt.y / cell);
+            if (!buckets[key]) buckets[key] = [];
+            buckets[key].push(feature);
+        });
+        Object.keys(buckets).forEach(function (key) {
+            var group = buckets[key];
+            if (group.length === 1) {
+                addStopMarker(spreadClosePins(group)[0]);
+                return;
+            }
+            var lat = 0, lon = 0;
+            group.forEach(function (feature) {
+                lat += feature.geometry.coordinates[1];
+                lon += feature.geometry.coordinates[0];
+            });
+            lat /= group.length;
+            lon /= group.length;
+            var icon = L.divIcon({
+                className: '',
+                html: '<div class="cluster-marker">' + group.length + '</div>',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+            var marker = L.marker([lat, lon], { icon: icon });
+            marker.bindTooltip(String(group.length), { direction: 'top', offset: [0, -12] });
+            marker.on('click', function () {
+                var clusterBounds = L.latLngBounds(
+                    group.map(function (feature) {
+                        return L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                    })
+                );
+                map.fitBounds(clusterBounds, { padding: [48, 48], maxZoom: 17, animate: false });
+            });
+            marker.addTo(markersLayer);
+        });
+    }
+
+    function spreadClosePins(features) {
+        if (!features || features.length < 2) return features || [];
+        var cell = 0.00012;
+        var buckets = {};
+        features.forEach(function (feature, index) {
+            var lat = feature.geometry.coordinates[1];
+            var lon = feature.geometry.coordinates[0];
+            var key = Math.round(lat / cell) + ':' + Math.round(lon / cell);
+            if (!buckets[key]) buckets[key] = [];
+            buckets[key].push(index);
+        });
+        var copies = features.map(function (feature) {
+            return {
+                type: feature.type,
+                geometry: {
+                    type: feature.geometry.type,
+                    coordinates: [feature.geometry.coordinates[0], feature.geometry.coordinates[1]]
+                },
+                properties: feature.properties
+            };
+        });
+        Object.keys(buckets).forEach(function (key) {
+            var group = buckets[key];
+            if (group.length < 2) return;
+            var radius = 0.00009;
+            group.forEach(function (featureIndex, i) {
+                var angle = (Math.PI * 2 * i) / group.length;
+                copies[featureIndex].geometry.coordinates[0] += radius * Math.sin(angle);
+                copies[featureIndex].geometry.coordinates[1] += radius * Math.cos(angle);
+            });
+        });
+        return copies;
+    }
+
+    function addStopMarker(feature) {
+        var lat = feature.geometry.coordinates[1];
+        var lon = feature.geometry.coordinates[0];
+        var id = feature.properties.id;
+        var name = feature.properties.name || '';
+        var completed = !!feature.properties.completed;
+        var seq = (typeof feature.properties.position === 'number'
+            ? feature.properties.position
+            : 0) + 1;
+        var inner = completed ? '\u2713' : seq;
+        var icon = L.divIcon({
+            className: '',
+            html: '<div class="stop-marker' + (completed ? ' done' : '') + '">' + inner + '</div>',
+            iconSize: highContrastPins ? [24, 24] : [22, 22],
+            iconAnchor: highContrastPins ? [12, 12] : [11, 11]
+        });
+        var marker = L.marker([lat, lon], { icon: icon });
+        marker.bindTooltip(name, { direction: 'top', offset: [0, -10] });
+        marker.on('click', function () {
+            if (window.AndroidBridge) AndroidBridge.onStopClick(id);
+        });
+        marker.addTo(markersLayer);
+    }
+
+    function redrawClusters() {
+        if (!clusterPinsEnabled) return;
+        markersLayer.clearLayers();
+        drawStopMarkers(lastRoutePoints, null);
+    }
+
+    map.on('zoomend', redrawClusters);
+
     window.setRoute = setRoute;
     window.setNavRoute = setNavRoute;
     window.clearNavRoute = clearNavRoute;
@@ -563,7 +894,14 @@
     window.setMapStyle = setMapStyle;
     window.setMapTheme = setMapTheme;
     window.setDriveFollow = setDriveFollow;
+    window.setNorthUp = setNorthUp;
+    window.setImperialScale = setImperialScale;
+    window.setReduceMotion = setReduceMotion;
+    window.setHighContrastPins = setHighContrastPins;
     window.resumeDriveFollow = resumeDriveFollow;
+    window.restoreMapView = restoreMapView;
+    window.flyToPlace = flyToPlace;
+    updateMapHud();
 </script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.danielcioban.routeplanner.data.RouteRepository
+import com.danielcioban.routeplanner.data.StopDraft
 import com.danielcioban.routeplanner.data.account.AccountSession
 import com.danielcioban.routeplanner.data.account.AccountSessionStore
 import com.danielcioban.routeplanner.data.delivery.DeliverySession
@@ -39,10 +40,92 @@ class RouteListViewModel(
         viewModelScope.launch { accountSessionStore.signOut() }
     }
 
+    fun archiveRoute(routeId: Long, archived: Boolean) {
+        viewModelScope.launch { repository.setRouteArchived(routeId, archived) }
+    }
+
+    fun resumeTrip() {
+        viewModelScope.launch { deliverySessionStore.setPaused(false) }
+    }
+
     fun duplicateRoute(routeId: Long, copySuffix: String, onCreated: (Long) -> Unit) {
         viewModelScope.launch {
             val newId = repository.duplicateRoute(routeId, copySuffix) ?: return@launch
             onCreated(newId)
+        }
+    }
+
+    fun addPlaceToRoute(
+        routeId: Long,
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        addressHint: String,
+        libraryStopId: Long?,
+        onDone: (Long) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val libId = libraryStopId ?: repository.upsertLibraryStop(
+                name = name,
+                addressHint = addressHint,
+                notes = "",
+                latitude = latitude,
+                longitude = longitude,
+            )
+            repository.addStopFromLibrary(routeId, libId)
+            onDone(routeId)
+        }
+    }
+
+    fun createRouteFromPlace(
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        addressHint: String,
+        libraryStopId: Long?,
+        roundTrip: Boolean = false,
+        onCreated: (Long) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val libId = libraryStopId ?: repository.upsertLibraryStop(
+                name = name,
+                addressHint = addressHint,
+                notes = "",
+                latitude = latitude,
+                longitude = longitude,
+            )
+            val routeId = repository.createRoute(
+                name = name,
+                notes = "",
+                stops = listOf(
+                    StopDraft(
+                        name = name,
+                        addressHint = addressHint,
+                        latitude = latitude,
+                        longitude = longitude,
+                        libraryStopId = libId,
+                    ),
+                ),
+                roundTrip = roundTrip,
+            )
+            onCreated(routeId)
+        }
+    }
+
+    fun savePlaceToLibrary(
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        addressHint: String,
+    ) {
+        viewModelScope.launch {
+            repository.upsertLibraryStop(
+                name = name,
+                addressHint = addressHint,
+                notes = "",
+                latitude = latitude,
+                longitude = longitude,
+            )
         }
     }
 

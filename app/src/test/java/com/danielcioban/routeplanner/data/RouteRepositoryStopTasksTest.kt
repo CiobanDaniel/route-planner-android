@@ -31,7 +31,7 @@ class RouteRepositoryStopTasksTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = RouteRepository(db)
+        repository = RouteRepository(db, routingClient = null)
         routeId = repository.createRoute("Test route", "", emptyList())
         stopId = repository.addStop(
             routeId,
@@ -124,5 +124,88 @@ class RouteRepositoryStopTasksTest {
         assertTrue(changed)
         val names = repository.getRoute(routeId)!!.orderedStops.map { it.name }
         assertEquals(listOf("Stop A", "Near", "Far"), names)
+    }
+
+    @Test
+    fun failStop_bypassesRequiredTasks() = runTest {
+        repository.addStopTask(stopId, "Collect signature", required = true)
+
+        val result = repository.failStop(
+            stopId,
+            com.danielcioban.routeplanner.data.local.StopFailureReason.NOT_HOME,
+        )
+
+        assertEquals(StopCompletionResult.Updated, result)
+        val stop = db.routeDao().getStop(stopId)!!
+        assertTrue(stop.isCompleted)
+        assertEquals(
+            com.danielcioban.routeplanner.data.local.StopFailureReason.NOT_HOME,
+            stop.failureReason,
+        )
+    }
+
+    @Test
+    fun setGpsOrigin_storesOnRouteNotAsStop() = runTest {
+        val originId = repository.setGpsOrigin(routeId, "Van", 45.8, 21.3)
+        assertEquals(0L, originId)
+        val loaded = repository.getRoute(routeId)!!
+        assertEquals(45.8, loaded.route.originLatitude!!, 0.0001)
+        assertEquals(21.3, loaded.route.originLongitude!!, 0.0001)
+        assertTrue(loaded.orderedStops.none { it.isOrigin })
+        assertEquals(1, loaded.deliveryStops.size)
+        val firstDelivery = db.routeDao().getStop(stopId)!!
+        assertFalse(firstDelivery.isOrigin)
+    }
+
+    @Test
+    fun rescheduleStop_movesToEnd() = runTest {
+        val second = repository.addStop(
+            routeId,
+            StopDraft(name = "Stop B", latitude = 45.8, longitude = 21.3),
+        )
+        repository.rescheduleStop(stopId, addMinutes = 60)
+        val ordered = repository.getRoute(routeId)!!.orderedStops
+        assertEquals(listOf(second, stopId), ordered.map { it.id })
+        assertFalse(ordered.last().isCompleted)
+        assertEquals(null, ordered.last().failureReason)
+    }
+
+    @Test
+    fun resetStopCompletions_clearsFailureReason() = runTest {
+        repository.failStop(stopId, com.danielcioban.routeplanner.data.local.StopFailureReason.CLOSED)
+        repository.resetStopCompletions(routeId)
+        val stop = db.routeDao().getStop(stopId)!!
+        assertFalse(stop.isCompleted)
+        assertNull(stop.failureReason)
+    }
+
+    @Test
+    fun setStopCompleted_deferLogsRequiredTasks() = runTest {
+        repository.addStopTask(stopId, "Collect signature", required = true)
+        val result = repository.setStopCompleted(
+            stopId,
+            completed = true,
+            deferRequiredTasks = true,
+            deferNote = "back later",
+        )
+        assertEquals(StopCompletionResult.Updated, result)
+        val stop = db.routeDao().getStop(stopId)!!
+        assertTrue(stop.isCompleted)
+        assertTrue(stop.tasksDeferred)
+        assertEquals("back later", stop.tasksDeferredNote)
+    }
+
+    @Test
+    fun completeRemainingStops_stopsAtRequiredTaskGate() = runTest {
+        repository.addStopTask(stopId, "Collect signature", required = true)
+        val second = repository.addStop(
+            routeId,
+            StopDraft(name = "Stop B", latitude = 45.8, longitude = 21.3),
+        )
+        val result = repository.completeRemainingStops(routeId)
+        assertEquals(0, result.completedCount)
+        assertEquals("Stop A", result.blockedStopName)
+        assertFalse(db.routeDao().getStop(stopId)!!.isCompleted)
+        assertFalse(db.routeDao().getStop(second)!!.isCompleted)
     }
 }

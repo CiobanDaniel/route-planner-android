@@ -1,0 +1,39 @@
+# Self-hosted OSRM + Nominatim for Route Planner (Romania extract).
+# See docs/SELF_HOST_ROUTING.md — do not point Play builds at public demos.
+#
+# 1) Prepare the OSRM graph (once, needs ~8 GB RAM):
+#      pwsh ./prepare-osrm.ps1
+#      # or: bash ./prepare-osrm.sh
+# 2) Routing only:
+#      docker compose up -d osrm
+# 3) Search (first start imports Romania — hours, ~16 GB RAM):
+#      docker compose --profile nominatim up -d
+
+services:
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld /data/romania-latest.osrm
+    volumes:
+      - ./data:/data:ro
+    ports:
+      - "5000:5000"
+
+  nominatim:
+    profiles: ["nominatim"]
+    image: mediagis/nominatim:4.4
+    restart: unless-stopped
+    environment:
+      PBF_URL: https://download.geofabrik.de/europe/romania-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/europe/romania-updates/
+      IMPORT_WIKIPEDIA: "false"
+      IMPORT_STYLE: address
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:-changeme}
+    ports:
+      - "8080:8080"
+    shm_size: "1gb"
+    volumes:
+      - nominatim-pg:/var/lib/postgresql/14/data
+
+volumes:
+  nominatim-pg:

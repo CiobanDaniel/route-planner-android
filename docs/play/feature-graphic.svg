@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500" role="img" aria-labelledby="title">
+  <title id="title">Route Planner Play feature graphic</title>
+  <rect width="1024" height="500" fill="#E86A17"/>
+  <rect x="0" y="0" width="1024" height="500" fill="#8F3A0A" opacity="0.18"/>
+  <text x="64" y="230" fill="#FFFFFF" font-family="Segoe UI, system-ui, sans-serif" font-size="72" font-weight="700">Route Planner</text>
+  <text x="64" y="300" fill="#FFF3E8" font-family="Segoe UI, system-ui, sans-serif" font-size="28">Multi-stop delivery routes</text>
+  <circle cx="880" cy="160" r="70" fill="#FFFFFF" opacity="0.95"/>
+  <path d="M880 108c-28 0-52 22-52 52 0 38 52 92 52 92s52-54 52-92c0-30-24-52-52-52zm0 74a22 22 0 1 1 0-44 22 22 0 0 1 0 44z" fill="#E86A17"/>
+</svg>

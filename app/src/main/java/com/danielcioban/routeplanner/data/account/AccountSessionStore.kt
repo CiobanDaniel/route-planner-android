@@ -24,13 +24,14 @@ class AccountSessionStore(private val context: Context) {
 
     val session: Flow<AccountSession> = context.accountDataStore.data.map { prefs ->
         val email = prefs[Keys.email].orEmpty()
+        val provider = prefs[Keys.providerId].orEmpty().ifBlank { PREVIEW_PROVIDER }
         if (email.isBlank()) {
             AccountSession.SignedOut
         } else {
             AccountSession.SignedIn(
                 displayName = prefs[Keys.displayName].orEmpty().ifBlank { email },
                 email = email,
-                providerId = prefs[Keys.providerId].orEmpty().ifBlank { "preview" },
+                providerId = provider,
             )
         }
     }
@@ -41,11 +42,26 @@ class AccountSessionStore(private val context: Context) {
         context.accountDataStore.edit {
             it[Keys.displayName] = displayName.trim()
             it[Keys.email] = trimmedEmail
-            it[Keys.providerId] = "preview"
+            it[Keys.providerId] = PREVIEW_PROVIDER
+        }
+    }
+
+    suspend fun signInDeveloper() {
+        context.accountDataStore.edit {
+            it[Keys.displayName] = "Developer"
+            it[Keys.email] = "dev@local"
+            it[Keys.providerId] = DEVELOPER_PROVIDER
         }
     }
 
     suspend fun signOut() {
         context.accountDataStore.edit { it.clear() }
+    }
+
+    companion object {
+        const val DEVELOPER_PROVIDER = "developer"
+        const val PREVIEW_PROVIDER = "preview"
+        /** Reserved for Google Sign-In when Bucket 12 lands. Not used in this build. */
+        const val GOOGLE_PROVIDER = "google"
     }
 }

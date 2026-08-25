@@ -1,0 +1,14 @@
+# Optional TLS reverse proxy when this stack is on a VPS with a domain.
+# local.properties:
+#   osrm.base.url=https://route.example.com
+#   nominatim.base.url=https://search.example.com
+#
+# Point DNS A records at the VPS, then:
+#   caddy run --config Caddyfile
+#
+# route.example.com {
+#     reverse_proxy osrm:5000
+# }
+# search.example.com {
+#     reverse_proxy nominatim:8080
+# }

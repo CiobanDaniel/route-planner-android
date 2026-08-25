@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,22 +21,31 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.danielcioban.routeplanner.BuildConfig
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.layout.AppPanes
+import com.danielcioban.routeplanner.ui.layout.readableWidth
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
+import com.danielcioban.routeplanner.ui.menu.ScreenMenuButton
 import com.danielcioban.routeplanner.ui.theme.IslandColors
+import com.danielcioban.routeplanner.util.ProblemReport
 
 @Composable
 fun AboutScreen(
     appVersion: String,
     onBack: () -> Unit,
+    onOpenMenu: () -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         RouteMapBackdrop(stops = emptyList())
@@ -58,9 +68,13 @@ fun AboutScreen(
                         tint = IslandColors.onSurface,
                     )
                 }
+                Spacer(modifier = Modifier.width(10.dp))
+                ScreenMenuButton(onClick = onOpenMenu, embedded = false)
                 Spacer(modifier = Modifier.width(12.dp))
                 FloatingIsland(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(max = AppPanes.TitleMaxWidth),
                     shape = RoundedCornerShape(22.dp),
                     contentPadding = 16.dp,
                 ) {
@@ -75,8 +89,12 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            FloatingIsland(
+            Box(
                 modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+            FloatingIsland(
+                modifier = Modifier.readableWidth(),
                 shape = RoundedCornerShape(28.dp),
                 contentPadding = 20.dp,
             ) {
@@ -130,7 +148,16 @@ fun AboutScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = IslandColors.onSurfaceMuted,
                     )
+                    val uriHandler = LocalUriHandler.current
+                    val context = LocalContext.current
+                    TextButton(onClick = { uriHandler.openUri(BuildConfig.PRIVACY_POLICY_URL) }) {
+                        Text(stringResource(R.string.privacy_policy))
+                    }
+                    TextButton(onClick = { ProblemReport.start(context) }) {
+                        Text(stringResource(R.string.report_problem))
+                    }
                 }
+            }
             }
         }
     }

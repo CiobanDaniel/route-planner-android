@@ -31,9 +31,24 @@ fun StopNotesBanner(
     addressHint: String = "",
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    phone: String = "",
+    doorCode: String = "",
+    extraLine: String = "",
 ) {
     val body = buildString {
         if (addressHint.isNotBlank()) append(addressHint.trim())
+        if (phone.isNotBlank()) {
+            if (isNotEmpty()) append('\n')
+            append(phone.trim())
+        }
+        if (doorCode.isNotBlank()) {
+            if (isNotEmpty()) append('\n')
+            append(doorCode.trim())
+        }
+        if (extraLine.isNotBlank()) {
+            if (isNotEmpty()) append('\n')
+            append(extraLine.trim())
+        }
         if (notes.isNotBlank()) {
             if (isNotEmpty()) append('\n')
             append(notes.trim())
@@ -45,16 +60,16 @@ fun StopNotesBanner(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(16.dp),
+                color = IslandColors.noteFill,
+                shape = RoundedCornerShape(14.dp),
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.StickyNote2,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.secondary,
+            tint = IslandColors.badge,
             modifier = Modifier.size(20.dp),
         )
         Spacer(modifier = Modifier.width(10.dp))
@@ -63,7 +78,7 @@ fun StopNotesBanner(
                 text = stringResource(R.string.notes_banner_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.secondary,
+                color = IslandColors.badge,
             )
             Text(
                 text = body,

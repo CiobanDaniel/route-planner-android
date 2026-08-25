@@ -17,27 +17,27 @@ When you ship publicly, show OSM attribution in the app (About / map footer) and
 - License: BSD-2-Clause
 - Usage: map rendering inside an Android WebView (`app/src/main/assets/map.html`)
 
-## Tile providers (Esri)
+## Tile providers
 
-Everyday **Map** / **Driving** streets: Esri World Street Map (OSM and other sources). Dark theme inverts the same street tiles so roads stay light on land; satellite and terrain are not inverted.
+Everyday **Map** / **Driving** streets: Humanitarian OSM (HOT) raster tiles hosted by [OSM France](https://www.openstreetmap.fr/usage/) (OSM data). Dark theme and **Night** use [CARTO Dark Matter](https://carto.com/attribution/) rasters (not inverted HOT tiles). Satellite and terrain stay Esri. Identify the app in the WebView User-Agent; cache tiles; do not hammer the public tile servers. Self-host or use a keyed plan (MapTiler, Stadia, Esri) if traffic grows.
 
 **Satellite:** Esri World Imagery plus Esri Reference overlays (roads and place names).
 
 **Terrain:** Esri World Topo Map.
 
-Respect each provider’s tile usage policy and attribution. Esri’s public raster services are intended for fair-use; self-host or use a keyed commercial plan (MapTiler, Stadia, etc.) if traffic grows. Vector MapLibre / OpenFreeMap is deferred while heading uses leaflet-rotate.
+Respect each provider’s tile usage policy and attribution. Vector MapLibre / OpenFreeMap is deferred while heading uses leaflet-rotate.
 
 ## OSRM (Open Source Routing Machine)
 
-- Demo server: `https://router.project-osrm.org` (not for heavy production)
+- Demo server: `https://router.project-osrm.org` (not for a van day)
+- Self-host pack (Romania extract): [`docs/SELF_HOST_ROUTING.md`](docs/SELF_HOST_ROUTING.md)
 - License: BSD-ish (see upstream)
 - Usage: driving routes and turn instructions
 
-For production, run your own OSRM instance or a commercial routing API.
-
 ## Nominatim
 
-- Service: `https://nominatim.openstreetmap.org`
+- Service: `https://nominatim.openstreetmap.org` (demo; usage policy below)
+- Self-host pack: [`docs/SELF_HOST_ROUTING.md`](docs/SELF_HOST_ROUTING.md)
 - Usage policy: https://operations.osmfoundation.org/policies/nominatim/
 - Usage: address / place search
 

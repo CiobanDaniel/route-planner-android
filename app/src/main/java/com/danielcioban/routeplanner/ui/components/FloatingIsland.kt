@@ -14,7 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -30,7 +33,10 @@ import com.danielcioban.routeplanner.ui.theme.LocalIslandColors
 
 /**
  * Floating panel above the map.
- * Light theme: soft dual shadows. Dark theme: single drop shadow (no white halo).
+ *
+ * Light comes from the upper-left **on the face**. The drop shadow is cast
+ * lower-right onto whatever is behind the island — not a glow on the panel.
+ * Dark theme: no surrounding white halo (that reads as fog on the map).
  */
 @Composable
 fun FloatingIsland(
@@ -42,14 +48,33 @@ fun FloatingIsland(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val palette = LocalIslandColors.current
-    val borderColor = palette.fieldBorder.copy(alpha = if (palette.useHighlightShadow) 0.72f else 0.7f)
+    val lightTheme = palette.useHighlightShadow
     Box(
         modifier = modifier
             .graphicsLayer { clip = false }
-            .islandElevation(shape = shape, elevation = elevation, palette = palette)
+            .islandCastShadow(shape = shape, elevation = elevation, palette = palette)
             .clip(shape)
             .background(containerColor)
-            .border(width = 1.dp, color = borderColor, shape = shape)
+            .islandFaceLight(shape = shape, palette = palette)
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = if (lightTheme) {
+                        listOf(
+                            Color.White.copy(alpha = 0.58f),
+                            palette.fieldBorder.copy(alpha = 0.42f),
+                        )
+                    } else {
+                        listOf(
+                            Color.White.copy(alpha = 0.12f),
+                            palette.fieldBorder.copy(alpha = 0.7f),
+                        )
+                    },
+                    start = Offset.Zero,
+                    end = Offset.Infinite,
+                ),
+                shape = shape,
+            )
             .blockMapPassThrough()
             .padding(contentPadding),
         content = content,
@@ -61,6 +86,7 @@ fun FloatingCircleButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     embedded: Boolean = false,
+    prominent: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (embedded) {
@@ -80,9 +106,9 @@ fun FloatingCircleButton(
     }
     FloatingIsland(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(if (prominent) 22.dp else 18.dp),
         contentPadding = 0.dp,
-        elevation = 10.dp,
+        elevation = if (prominent) 14.dp else 10.dp,
     ) {
         Box(
             modifier = Modifier
@@ -91,7 +117,7 @@ fun FloatingCircleButton(
                     indication = null,
                     onClick = onClick,
                 )
-                .padding(14.dp),
+                .padding(if (prominent) 18.dp else 12.dp),
             contentAlignment = Alignment.Center,
             content = content,
         )
@@ -111,51 +137,79 @@ fun Modifier.blockMapPassThrough(): Modifier = pointerInput(Unit) {
     }
 }
 
-private fun Modifier.islandElevation(
+/** Soft drop shadow on the map, offset lower-right. Not drawn as a rim on the face. */
+private fun Modifier.islandCastShadow(
     shape: RoundedCornerShape,
     elevation: Dp,
     palette: IslandPalette,
 ): Modifier = drawBehind {
     val corner = shape.topStart.toPx(size, this)
-    val elev = elevation.toPx()
+    val elev = elevation.toPx().coerceAtLeast(1f)
+    val blur = elev * 1.35f
+    val dx = elev * 0.42f
+    val dy = elev * 0.52f
+    val shadowAlpha = if (palette.useHighlightShadow) 0.18f else 0.38f
     drawIntoCanvas { canvas ->
         val paint = Paint()
+        paint.color = Color.Black.copy(alpha = 0.02f)
         val fp = paint.asFrameworkPaint()
         fp.isAntiAlias = true
-
-        if (palette.useHighlightShadow) {
-            fp.setShadowLayer(
-                elev * 0.9f,
-                elev * 0.35f,
-                elev * 0.45f,
-                palette.darkShadow.copy(alpha = 0.40f).toArgb(),
-            )
-            canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
-
-            fp.setShadowLayer(
-                elev * 0.7f,
-                -elev * 0.28f,
-                -elev * 0.32f,
-                palette.lightShadow.copy(alpha = 0.95f).toArgb(),
-            )
-            canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
-        } else {
-            // Dark mode: soft drop shadow only — light “sculpt” reads as a foggy halo.
-            fp.setShadowLayer(
-                elev * 1.1f,
-                0f,
-                elev * 0.35f,
-                palette.darkShadow.copy(alpha = 0.55f).toArgb(),
-            )
-            canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
-        }
+        fp.setShadowLayer(
+            blur,
+            dx,
+            dy,
+            palette.darkShadow.copy(alpha = shadowAlpha).toArgb(),
+        )
+        canvas.drawRoundRect(0f, 0f, size.width, size.height, corner, corner, paint)
     }
+}
 
+/**
+ * Lighting on the panel itself (under labels/icons): bright from upper-left,
+ * a hint of shade toward lower-right. Clipped to the island so it never
+ * becomes a halo on the map.
+ */
+private fun Modifier.islandFaceLight(
+    shape: RoundedCornerShape,
+    palette: IslandPalette,
+): Modifier = drawWithContent {
+    val corner = CornerRadius(shape.topStart.toPx(size, this))
     if (palette.useHighlightShadow) {
         drawRoundRect(
-            color = palette.lightShadow.copy(alpha = 0.55f),
-            cornerRadius = CornerRadius(corner, corner),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
+            brush = Brush.linearGradient(
+                colorStops = arrayOf(
+                    0f to Color.White.copy(alpha = 0.20f),
+                    0.42f to Color.White.copy(alpha = 0.05f),
+                    1f to Color.Transparent,
+                ),
+                start = Offset.Zero,
+                end = Offset(size.width * 0.7f, size.height * 0.7f),
+            ),
+            cornerRadius = corner,
+        )
+        drawRoundRect(
+            brush = Brush.linearGradient(
+                colorStops = arrayOf(
+                    0f to Color.Transparent,
+                    1f to Color.Black.copy(alpha = 0.045f),
+                ),
+                start = Offset(size.width * 0.4f, size.height * 0.4f),
+                end = Offset(size.width, size.height),
+            ),
+            cornerRadius = corner,
+        )
+    } else {
+        drawRoundRect(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.06f),
+                    Color.Transparent,
+                ),
+                start = Offset.Zero,
+                end = Offset(size.width * 0.5f, size.height * 0.5f),
+            ),
+            cornerRadius = corner,
         )
     }
+    drawContent()
 }

@@ -23,7 +23,7 @@ private val ListItemShape = RoundedCornerShape(16.dp)
 
 @Composable
 private fun listItemBorderColor(selected: Boolean) =
-    if (selected) IslandColors.fieldBorderFocused else IslandColors.fieldBorder.copy(alpha = 0.55f)
+    if (selected) IslandColors.fieldBorderFocused else IslandColors.fieldBorder.copy(alpha = 0.7f)
 
 /** Inset row so list items read as separate objects on an island. */
 @Composable
@@ -47,7 +47,7 @@ fun IslandListItem(
                     Modifier
                 },
             )
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
@@ -86,6 +86,6 @@ fun IslandListDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(
         modifier = modifier.padding(horizontal = 8.dp, vertical = 6.dp),
         thickness = 1.dp,
-        color = IslandColors.fieldBorder.copy(alpha = 0.55f),
+        color = IslandColors.fieldBorder.copy(alpha = 0.65f),
     )
 }

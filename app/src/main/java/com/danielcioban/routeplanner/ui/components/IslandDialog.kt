@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,9 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.danielcioban.routeplanner.ui.layout.AppPanes
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
@@ -59,6 +62,7 @@ fun IslandDialog(
             FloatingIsland(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .widthIn(max = AppPanes.ReadableMaxWidth)
                     .padding(horizontal = 24.dp)
                     .heightIn(max = 560.dp)
                     .clickable(
@@ -81,6 +85,8 @@ fun IslandDialog(
                         style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = IslandColors.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     content()
                     if (confirmLabel != null || dismissLabel != null) {

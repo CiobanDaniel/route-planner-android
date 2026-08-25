@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_navigation"
+        android:shortcutId="library"
+        android:shortcutLongLabel="@string/shortcut_library_long"
+        android:shortcutShortLabel="@string/shortcut_library_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.danielcioban.routeplanner.MainActivity"
+            android:targetPackage="com.danielcioban.routeplanner">
+            <extra
+                android:name="open_library"
+                android:value="true" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_navigation"
+        android:shortcutId="new_route"
+        android:shortcutLongLabel="@string/shortcut_new_route_long"
+        android:shortcutShortLabel="@string/shortcut_new_route_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.danielcioban.routeplanner.MainActivity"
+            android:targetPackage="com.danielcioban.routeplanner">
+            <extra
+                android:name="create_route"
+                android:value="true" />
+        </intent>
+    </shortcut>
+</shortcuts>

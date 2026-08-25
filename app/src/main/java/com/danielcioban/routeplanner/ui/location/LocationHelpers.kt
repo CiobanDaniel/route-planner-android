@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import com.danielcioban.routeplanner.ui.dev.DevLocationSim
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -24,6 +25,9 @@ fun Context.hasLocationPermission(): Boolean {
 
 @SuppressLint("MissingPermission")
 suspend fun Context.lastKnownLocationOrNull(): Location? {
+    if (DevLocationSim.isActive()) {
+        DevLocationSim.snapshotLocation()?.let { return it }
+    }
     if (!hasLocationPermission()) return null
     val client = LocationServices.getFusedLocationProviderClient(this)
     return suspendCancellableCoroutine { cont ->
@@ -35,6 +39,9 @@ suspend fun Context.lastKnownLocationOrNull(): Location? {
 
 @SuppressLint("MissingPermission")
 suspend fun Context.currentLocationOrNull(): Location? {
+    if (DevLocationSim.isActive()) {
+        DevLocationSim.snapshotLocation()?.let { return it }
+    }
     if (!hasLocationPermission()) return null
     val client = LocationServices.getFusedLocationProviderClient(this)
     return suspendCancellableCoroutine { cont ->
@@ -77,7 +84,14 @@ fun Context.requestLocationUpdates(
     highFrequency: Boolean,
     onLocation: (Location) -> Unit,
 ): (() -> Unit)? {
-    if (!hasLocationPermission()) return null
+    val simStop = DevLocationSim.addListener { loc ->
+        if (DevLocationSim.isActive()) onLocation(loc)
+    }
+    if (!hasLocationPermission()) {
+        if (DevLocationSim.isActive()) return simStop
+        simStop()
+        return null
+    }
     val client = LocationServices.getFusedLocationProviderClient(this)
     val intervalMs = if (highFrequency) 1_500L else 8_000L
     val request = LocationRequest.Builder(
@@ -90,9 +104,13 @@ fun Context.requestLocationUpdates(
 
     val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
+            if (DevLocationSim.isActive()) return
             result.lastLocation?.let(onLocation)
         }
     }
     client.requestLocationUpdates(request, callback, Looper.getMainLooper())
-    return { client.removeLocationUpdates(callback) }
+    return {
+        client.removeLocationUpdates(callback)
+        simStop()
+    }
 }

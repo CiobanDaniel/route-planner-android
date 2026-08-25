@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -36,16 +37,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.BuildConfig
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.account.AccountSession
+import com.danielcioban.routeplanner.data.account.AccountSessionStore
+import com.danielcioban.routeplanner.data.account.isDebugDeveloper
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.layout.AppPanes
+import com.danielcioban.routeplanner.ui.layout.readableWidth
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
 import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
+import com.danielcioban.routeplanner.ui.menu.ScreenMenuButton
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 
 @Composable
 fun AccountScreen(
     viewModel: AccountViewModel,
     onBack: () -> Unit,
+    onOpenMenu: () -> Unit = {},
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     var previewName by rememberSaveable { mutableStateOf("") }
@@ -72,9 +79,13 @@ fun AccountScreen(
                         tint = IslandColors.onSurface,
                     )
                 }
+                Spacer(modifier = Modifier.width(10.dp))
+                ScreenMenuButton(onClick = onOpenMenu, embedded = false)
                 Spacer(modifier = Modifier.width(12.dp))
                 FloatingIsland(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .widthIn(max = AppPanes.TitleMaxWidth),
                     shape = RoundedCornerShape(22.dp),
                     contentPadding = 16.dp,
                 ) {
@@ -89,8 +100,12 @@ fun AccountScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            FloatingIsland(
+            Box(
                 modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+            FloatingIsland(
+                modifier = Modifier.readableWidth(),
                 shape = RoundedCornerShape(28.dp),
                 contentPadding = 20.dp,
             ) {
@@ -111,6 +126,19 @@ fun AccountScreen(
                             Text(
                                 text = stringResource(R.string.account_signed_out_body),
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = IslandColors.onSurfaceMuted,
+                            )
+                            Button(
+                                onClick = { },
+                                enabled = false,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                            ) {
+                                Text(stringResource(R.string.account_google_sign_in))
+                            }
+                            Text(
+                                text = stringResource(R.string.account_google_privacy),
+                                style = MaterialTheme.typography.bodySmall,
                                 color = IslandColors.onSurfaceMuted,
                             )
                             if (BuildConfig.DEBUG) {
@@ -143,14 +171,17 @@ fun AccountScreen(
                                 ) {
                                     Text(stringResource(R.string.account_preview_sign_in))
                                 }
-                            } else {
-                                Button(
-                                    onClick = { },
-                                    enabled = false,
+                                Text(
+                                    text = stringResource(R.string.account_developer_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = IslandColors.onSurfaceMuted,
+                                )
+                                OutlinedButton(
+                                    onClick = { viewModel.signInDeveloper() },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
                                 ) {
-                                    Text(stringResource(R.string.menu_login))
+                                    Text(stringResource(R.string.account_developer_sign_in))
                                 }
                             }
                         }
@@ -172,21 +203,63 @@ fun AccountScreen(
                                 color = IslandColors.onSurfaceMuted,
                             )
                             Text(
+                                text = stringResource(
+                                    R.string.account_signed_in_provider,
+                                    accountProviderLabel(current.providerId),
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = IslandColors.onSurfaceMuted,
+                            )
+                            Text(
                                 text = stringResource(R.string.account_signed_in_body),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = IslandColors.onSurfaceMuted,
                             )
+                            if (current.isDebugDeveloper()) {
+                                Text(
+                                    text = stringResource(R.string.account_developer_active),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = IslandColors.onSurface,
+                                )
+                            }
                             OutlinedButton(
                                 onClick = { viewModel.signOut() },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                             ) {
-                                Text(stringResource(R.string.menu_logout))
+                                Text(
+                                    text = if (current.providerId == AccountSessionStore.GOOGLE_PROVIDER) {
+                                        stringResource(R.string.account_google_sign_out)
+                                    } else {
+                                        stringResource(R.string.menu_logout)
+                                    },
+                                )
                             }
                         }
                     }
                 }
             }
+            }
         }
     }
 }
+
+@Composable
+private fun accountProviderLabel(providerId: String): String = when (providerId) {
+    AccountSessionStore.GOOGLE_PROVIDER -> stringResource(R.string.account_provider_google)
+    AccountSessionStore.DEVELOPER_PROVIDER -> stringResource(R.string.account_provider_developer)
+    AccountSessionStore.PREVIEW_PROVIDER -> stringResource(R.string.account_provider_preview)
+    else -> providerId
+}
+
+/** Reserved copy for Google Sign-In UI once Bucket 12 is wired. */
+@Suppress("unused")
+private val reservedGoogleAuthCopy = intArrayOf(
+    R.string.account_google_connecting,
+    R.string.account_google_failed,
+    R.string.account_google_body,
+    R.string.account_google_unavailable,
+    R.string.account_cloud_sync_soon,
+    R.string.account_unlink,
+    R.string.account_not_in_this_build,
+)

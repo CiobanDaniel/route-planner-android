@@ -22,6 +22,10 @@ class AccountViewModel(
         }
     }
 
+    fun signInDeveloper() {
+        viewModelScope.launch { accountSessionStore.signInDeveloper() }
+    }
+
     fun signOut() {
         viewModelScope.launch { accountSessionStore.signOut() }
     }

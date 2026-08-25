@@ -29,10 +29,10 @@ fun MapAttributionChip(modifier: Modifier = Modifier) {
             )
             .border(
                 width = 1.dp,
-                color = IslandColors.fieldBorder.copy(alpha = 0.55f),
+                color = IslandColors.fieldBorder.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(8.dp),
             )
             .blockMapPassThrough()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 7.dp, vertical = 3.dp),
     )
 }

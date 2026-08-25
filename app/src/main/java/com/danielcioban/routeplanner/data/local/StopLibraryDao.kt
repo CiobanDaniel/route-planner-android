@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface StopLibraryDao {
-    @Query("SELECT * FROM stop_library ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM stop_library WHERE deletedAtEpochMs IS NULL ORDER BY name COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<StopLibraryEntity>>
+
+    @Query("SELECT * FROM stop_library WHERE deletedAtEpochMs IS NOT NULL ORDER BY deletedAtEpochMs DESC")
+    fun observeTrash(): Flow<List<StopLibraryEntity>>
 
     @Query("SELECT * FROM stop_library WHERE id = :id")
     suspend fun getById(id: Long): StopLibraryEntity?

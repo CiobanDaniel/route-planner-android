@@ -15,15 +15,18 @@ We need a path to sync without rewriting Compose screens or breaking offline del
 ## Decision
 
 1. **Stable `remoteId` (UUID)** on every syncable entity (`routes`, `stops`, `stop_library`,
-   `stop_tasks`). Local `Long` primary keys stay for Room relations and delivery session.
-2. **Optional `deletedAtEpochMs`** tombstone column on those tables. UI still hard-deletes
-   today; sync workers will soft-delete later.
+   `stop_tasks`, `trip_history`). Local `Long` primary keys stay for Room relations and delivery session.
+2. **Optional `deletedAtEpochMs`** tombstone column on those tables. Home route delete and
+   library Everywhere already soft-delete into Trash; Purge hard-deletes. This-route-only stop
+   remove stays a hard `DELETE`. Sync workers can reuse the same tombstones.
 3. **`AccountSessionStore` (DataStore)** holds display metadata only (name, email, provider
    slug). Tokens belong in Credential Manager / encrypted storage when auth lands — not in
    DataStore.
 4. **JSON backup/export** (`RouteBackupManager`) uses the same payload shape future sync will
-   merge. Import merges by `remoteId` with **last-write-wins** on `updatedAtEpochMs` for
-   routes and library entries.
+   merge. Format **v2** first included `trips`; the tree is now **v6** (POD/COD, fuel log, …;
+   v1–v5 still import). Import merges by `remoteId` with **last-write-wins**
+   on `updatedAtEpochMs` for routes and library entries. In-progress trips import as
+   **cancelled** so a restore cannot steal the live session.
 5. **Sync API sits beside `RouteRepository`**, not inside composables. UI keeps calling
    `RouteRepository`; a future `RemoteRouteDataSource` pushes/pulls JSON or API DTOs.
 
