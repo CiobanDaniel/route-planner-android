@@ -109,7 +109,7 @@
     <string name="account_title">Account</string>
     <string name="account_menu_signed_out">On this phone — tap for Google sign-in</string>
     <string name="account_signed_out_title">Not signed in</string>
-    <string name="account_signed_out_body">Routes, stops, and the library stay on this phone. Google sign-in will let you sync across devices and share with a team. It is not in this build yet.</string>
+    <string name="account_signed_out_body">Google sign-in creates an account for this app. Routes, stops, and the library stay on this phone until cloud sync is introduced.</string>
     <string name="account_signed_in_title">Signed in</string>
     <string name="account_signed_in_body">This is a local session only. Cloud sync is not wired yet — export a JSON backup from Settings if you need a copy on another phone.</string>
     <string name="account_display_name">Display name</string>
@@ -123,7 +123,7 @@
     <string name="account_google_sign_in">Continue with Google</string>
     <string name="account_google_sign_out">Sign out of Google</string>
     <string name="account_google_body">Google Account sign-in will sync routes across phones and let you share with a team. It is not enabled in this version.</string>
-    <string name="account_google_unavailable">Google sign-in is not in this build yet. Your data stays on this device.</string>
+    <string name="account_google_unavailable">Google sign-in needs Firebase configuration in this build. Your data stays on this device.</string>
     <string name="account_google_privacy">When Google sign-in ships, Google will see the name and email on the account you pick. Cloud sync is a separate step and is not on yet.</string>
     <string name="account_google_connecting">Connecting to Google…</string>
     <string name="account_google_failed">Couldn’t sign in with Google. Try again.</string>
@@ -848,4 +848,16 @@
     <string name="settings_services_search_ok">Search OK</string>
     <string name="settings_services_search_fallback">Search OK (fallback server)</string>
     <string name="settings_services_search_fail">Search failed</string>
+    <string name="account_google_setup_needed">Google sign-in is not configured in this build yet.</string>
+    <string name="account_delete">Delete Google account</string>
+    <string name="account_delete_title">Delete your Google account from Route Planner?</string>
+    <string name="account_delete_body">This deletes the Firebase account for this app and signs you out. Your routes stay on this phone because cloud sync is not available yet.</string>
+    <string name="settings_diagnostics">Privacy and diagnostics</string>
+    <string name="settings_diagnostics_on">Optional reporting is on</string>
+    <string name="settings_diagnostics_off">No optional reporting</string>
+    <string name="settings_diagnostics_hint">These controls are off by default. Route names, addresses, coordinates, notes, and account e-mail are never sent as analytics events.</string>
+    <string name="settings_usage_analytics">Anonymous usage analytics</string>
+    <string name="settings_usage_analytics_hint">Helps improve general app flows. Advertising and personalization stay disabled.</string>
+    <string name="settings_crash_reports">Crash reports</string>
+    <string name="settings_crash_reports_hint">Sends technical crash diagnostics to Firebase Crashlytics when Firebase is configured.</string>
 </resources>

@@ -4,7 +4,7 @@ Where planning and ops notes live, what is still true, and **what should go to G
 
 Related: [`AGENTS.md`](../AGENTS.md) (for assistants), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
-**Current cut:** local **0.5.0**. Data stays on-device. Do not start Bucket 12 (real Google/cloud auth) until asked.
+**Current cut:** local **0.5.0**. Data stays on-device. Firebase Google sign-in exists but does not sync route data.
 
 ---
 
@@ -22,6 +22,7 @@ These are the product and the instructions a future clone needs. They contain no
 | [`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md) | Yes | Idea menu; `[x]` / `[ ]` / `[-]` |
 | [`adr/`](adr/) | Yes | Why Leaflet, local-first sync, library as source of truth |
 | [`MANUAL_SETUP.md`](MANUAL_SETUP.md), [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) | Yes | Play / GitHub / signing **steps** (no passwords) |
+| [`GOOGLE_SERVICES.md`](GOOGLE_SERVICES.md) | Yes | Firebase / Auth console setup and privacy-safe local checks (no config file) |
 | [`PLAY_LISTING.md`](PLAY_LISTING.md), [`play/IARC.md`](play/IARC.md), [`play/INTERNAL_TESTING.md`](play/INTERNAL_TESTING.md) | Yes | Paste-ready Console copy |
 | [`play/feature-graphic.png`](play/feature-graphic.png) (+ svg/html) | Yes | Listing asset, no personal map |
 | [`play/testers.example.csv`](play/testers.example.csv) | Yes | Template only |

@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +44,7 @@ import com.danielcioban.routeplanner.ui.theme.LocalIslandColors
 @Composable
 fun FloatingIsland(
     modifier: Modifier = Modifier,
-    shape: RoundedCornerShape = RoundedCornerShape(24.dp),
+    shape: RoundedCornerShape = RoundedCornerShape(28.dp),
     containerColor: Color = IslandColors.surfaceElevated,
     contentPadding: Dp = 16.dp,
     elevation: Dp = 12.dp,
@@ -87,16 +90,35 @@ fun FloatingCircleButton(
     modifier: Modifier = Modifier,
     embedded: Boolean = false,
     prominent: Boolean = false,
+    containerColor: Color = IslandColors.surfaceElevated,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed = interactionSource.collectIsPressedAsState().value
+    val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        )
+    )
+
     if (embedded) {
         Box(
             modifier = modifier
+                .graphicsLayer {
+                    scaleX = animatedScale
+                    scaleY = animatedScale
+                }
                 .clip(RoundedCornerShape(14.dp))
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interactionSource,
                     indication = null,
-                    onClick = onClick,
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onClick()
+                    },
                 )
                 .padding(10.dp),
             contentAlignment = Alignment.Center,
@@ -105,17 +127,24 @@ fun FloatingCircleButton(
         return
     }
     FloatingIsland(
-        modifier = modifier,
-        shape = RoundedCornerShape(if (prominent) 22.dp else 18.dp),
+        modifier = modifier.graphicsLayer {
+            scaleX = animatedScale
+            scaleY = animatedScale
+        },
+        shape = RoundedCornerShape(20.dp),
         contentPadding = 0.dp,
+        containerColor = containerColor,
         elevation = if (prominent) 14.dp else 10.dp,
     ) {
         Box(
             modifier = Modifier
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interactionSource,
                     indication = null,
-                    onClick = onClick,
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onClick()
+                    },
                 )
                 .padding(if (prominent) 18.dp else 12.dp),
             contentAlignment = Alignment.Center,

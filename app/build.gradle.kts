@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
-
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
@@ -57,6 +56,8 @@ android {
         buildConfigField("String", "NOMINATIM_FALLBACK_URL", quotedBuildConfig(nominatimFallbackUrl))
         buildConfigField("String", "PRIVACY_POLICY_URL", quotedBuildConfig(privacyPolicyUrl))
         buildConfigField("String", "SUPPORT_EMAIL", quotedBuildConfig(supportEmail))
+        buildConfigField("boolean", "GOOGLE_SERVICES_JSON", googleServicesFile.exists().toString())
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", quotedBuildConfig((localProperties.getProperty("google.web.client.id") ?: "").trim()))
     }
 
     signingConfigs {
@@ -105,7 +106,7 @@ android {
     }
 
     lint {
-        abortOnError = false
+        abortOnError = true
         warningsAsErrors = false
         checkReleaseBuilds = true
     }
@@ -164,10 +165,16 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.appcompat)
 
-    if (googleServicesFile.exists()) {
-        implementation(platform(libs.firebase.bom))
-        implementation(libs.firebase.crashlytics)
-    }
+    // SDKs are kept on the classpath so the app can compile before a maintainer
+    // adds their local google-services.json. Runtime calls are gated by
+    // GoogleServices.isFirebaseReady(), and the Gradle plugins remain conditional.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -183,11 +190,4 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
-
-configurations.configureEach {
-    exclude(group = "com.google.firebase", module = "firebase-analytics")
-    exclude(group = "com.google.firebase", module = "firebase-analytics-ktx")
-    exclude(group = "com.google.firebase", module = "firebase-auth")
-    exclude(group = "com.google.firebase", module = "firebase-auth-ktx")
 }

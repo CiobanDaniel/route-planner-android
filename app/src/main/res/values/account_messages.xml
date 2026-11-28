@@ -1,0 +1,7 @@
+<resources>
+    <string name="account_delete_app">Delete Route Planner account</string>
+    <string name="account_delete_app_title">Delete your Route Planner account?</string>
+    <string name="account_identity_privacy">Google provides your name and email to sign in. Routes stay on this phone; cloud sync is not available yet.</string>
+    <string name="account_delete_reauthenticate">Sign out, sign in again, and retry deleting your Route Planner account.</string>
+    <string name="account_delete_failed">Could not delete your Route Planner account. Check your connection and try again.</string>
+</resources>

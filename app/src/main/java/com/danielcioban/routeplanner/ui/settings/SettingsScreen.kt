@@ -41,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -135,6 +136,7 @@ fun SettingsScreen(
         requestHomeGps = false
     }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val importLauncher = rememberLauncherForActivityResult(
@@ -185,7 +187,7 @@ fun SettingsScreen(
             viewModel.importCsv(
                 context,
                 it,
-                context.getString(R.string.csv_import_default_route),
+                localizedResources.getString(R.string.csv_import_default_route),
             )
         }
     }
@@ -326,6 +328,44 @@ fun SettingsScreen(
                     }
 
                     SettingsAccordion(
+                        title = stringResource(R.string.settings_diagnostics),
+                        summary = stringResource(
+                            if (settings.usageAnalyticsEnabled || settings.crashReportsEnabled) {
+                                R.string.settings_diagnostics_on
+                            } else {
+                                R.string.settings_diagnostics_off
+                            },
+                        ),
+                        expanded = openGroup == SettingsGroupId.Diagnostics.name,
+                        onToggle = {
+                            openGroup = if (openGroup == SettingsGroupId.Diagnostics.name) {
+                                ""
+                            } else {
+                                SettingsGroupId.Diagnostics.name
+                            }
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_diagnostics_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IslandColors.onSurfaceMuted,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+                        )
+                        SettingsSwitchRow(
+                            label = stringResource(R.string.settings_usage_analytics),
+                            subtitle = stringResource(R.string.settings_usage_analytics_hint),
+                            checked = settings.usageAnalyticsEnabled,
+                            onCheckedChange = viewModel::setUsageAnalyticsEnabled,
+                        )
+                        SettingsSwitchRow(
+                            label = stringResource(R.string.settings_crash_reports),
+                            subtitle = stringResource(R.string.settings_crash_reports_hint),
+                            checked = settings.crashReportsEnabled,
+                            onCheckedChange = viewModel::setCrashReportsEnabled,
+                        )
+                    }
+
+                    SettingsAccordion(
                         title = stringResource(R.string.settings_navigation),
                         summary = buildList {
                             if (settings.speakManeuvers) {
@@ -424,7 +464,7 @@ fun SettingsScreen(
                             MapAssetReload.bump()
                             android.widget.Toast.makeText(
                                 context,
-                                context.getString(R.string.settings_reload_map_done),
+                                localizedResources.getString(R.string.settings_reload_map_done),
                                 android.widget.Toast.LENGTH_SHORT,
                             ).show()
                         },
@@ -839,9 +879,9 @@ fun SettingsScreen(
                     }
                     Text(
                         text = if (lastBackupLabel == null) {
-                            context.getString(R.string.backup_never)
+                            localizedResources.getString(R.string.backup_never)
                         } else {
-                            context.getString(R.string.backup_last, lastBackupLabel)
+                            localizedResources.getString(R.string.backup_last, lastBackupLabel)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = IslandColors.onSurfaceMuted,
@@ -998,13 +1038,13 @@ fun SettingsScreen(
                                 val csv = viewModel.exportLibraryCsv()
                                 val send = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/csv"
-                                    putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.csv_export_subject))
+                                    putExtra(Intent.EXTRA_SUBJECT, localizedResources.getString(R.string.csv_export_subject))
                                     putExtra(Intent.EXTRA_TEXT, csv)
                                 }
                                 context.startActivity(
                                     Intent.createChooser(
                                         send,
-                                        context.getString(R.string.csv_export_chooser),
+                                        localizedResources.getString(R.string.csv_export_chooser),
                                     ),
                                 )
                             }
@@ -1021,10 +1061,10 @@ fun SettingsScreen(
                             scope.launch {
                                 PlaceShare.shareText(
                                     context = context,
-                                    subject = context.getString(R.string.csv_export_subject),
+                                    subject = localizedResources.getString(R.string.csv_export_subject),
                                     body = viewModel.exportLibraryGpx(),
                                     mimeType = "application/gpx+xml",
-                                    chooserTitle = context.getString(R.string.export_places_chooser),
+                                    chooserTitle = localizedResources.getString(R.string.export_places_chooser),
                                 )
                             }
                         },
@@ -1040,10 +1080,10 @@ fun SettingsScreen(
                             scope.launch {
                                 PlaceShare.shareText(
                                     context = context,
-                                    subject = context.getString(R.string.csv_export_subject),
+                                    subject = localizedResources.getString(R.string.csv_export_subject),
                                     body = viewModel.exportLibraryKml(),
                                     mimeType = "application/vnd.google-earth.kml+xml",
-                                    chooserTitle = context.getString(R.string.export_places_chooser),
+                                    chooserTitle = localizedResources.getString(R.string.export_places_chooser),
                                 )
                             }
                         },
@@ -1059,10 +1099,10 @@ fun SettingsScreen(
                             scope.launch {
                                 PlaceShare.shareText(
                                     context = context,
-                                    subject = context.getString(R.string.csv_export_subject),
+                                    subject = localizedResources.getString(R.string.csv_export_subject),
                                     body = viewModel.exportLibraryGeoJson(),
                                     mimeType = "application/geo+json",
-                                    chooserTitle = context.getString(R.string.export_places_chooser),
+                                    chooserTitle = localizedResources.getString(R.string.export_places_chooser),
                                 )
                             }
                         },
@@ -1195,7 +1235,7 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.settings_footer_hint),
+                        text = stringResource(R.string.account_cloud_sync_soon),
                         style = MaterialTheme.typography.bodySmall,
                         color = IslandColors.onSurfaceMuted,
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -1229,8 +1269,8 @@ fun SettingsScreen(
                     if (exportIsShare) {
                         viewModel.shareBackupFile(
                             context,
-                            context.getString(R.string.backup_export_chooser),
-                            context.getString(R.string.backup_export_subject),
+                            localizedResources.getString(R.string.backup_export_chooser),
+                            localizedResources.getString(R.string.backup_export_subject),
                             password,
                         )
                     } else if (password.isBlank()) {
@@ -1296,7 +1336,7 @@ fun SettingsScreen(
                         viewModel.importCsv(
                             context,
                             it,
-                            context.getString(R.string.csv_import_default_route),
+                            localizedResources.getString(R.string.csv_import_default_route),
                         )
                     }
                 },

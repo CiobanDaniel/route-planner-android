@@ -232,7 +232,7 @@ fun AppMenuOverlay(
         modifier = Modifier
             .fillMaxSize()
             .testTag("app_menu_overlay")
-            .background(IslandColors.scrim.copy(alpha = 0.28f))
+            .background(IslandColors.scrim)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

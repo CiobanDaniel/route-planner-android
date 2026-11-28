@@ -109,7 +109,7 @@
     <string name="account_title">Account</string>
     <string name="account_menu_signed_out">Su questo telefono — tocca per l\'accesso Google</string>
     <string name="account_signed_out_title">Non sei collegato</string>
-    <string name="account_signed_out_body">Itinerari, fermate e la libreria restano su questo telefono. L\'accesso Google ti permetterà di sincronizzare tra dispositivi e condividere con un team. Non è ancora in questa build.</string>
+    <string name="account_signed_out_body">L’accesso Google crea un account per questa app. Itinerari, fermate e libreria restano su questo telefono finché la sincronizzazione cloud non sarà disponibile.</string>
     <string name="account_signed_in_title">Accesso effettuato</string>
     <string name="account_signed_in_body">Questa è solo una sessione locale. La sync cloud non è ancora collegata — esporta un backup JSON da Impostazioni se ti serve una copia su un altro telefono.</string>
     <string name="account_display_name">Nome visualizzato</string>
@@ -123,7 +123,7 @@
     <string name="account_google_sign_in">Continua con Google</string>
     <string name="account_google_sign_out">Disconnetti da Google</string>
     <string name="account_google_body">L\'accesso con Google Account sincronizzerà gli itinerari tra telefoni e ti farà condividere con un team. Non è attivo in questa versione.</string>
-    <string name="account_google_unavailable">L\'accesso Google non è ancora in questa build. I dati restano su questo dispositivo.</string>
+    <string name="account_google_unavailable">L’accesso Google richiede la configurazione Firebase in questa build. I dati restano su questo dispositivo.</string>
     <string name="account_google_privacy">Quando arriverà l\'accesso Google, Google vedrà nome e email dell\'account che scegli. La sync cloud è un passaggio separato e non è ancora attiva.</string>
     <string name="account_google_connecting">Connessione a Google…</string>
     <string name="account_google_failed">Impossibile accedere con Google. Riprova.</string>
@@ -848,4 +848,16 @@
     <string name="settings_services_search_ok">Ricerca OK</string>
     <string name="settings_services_search_fallback">Ricerca OK (server di fallback)</string>
     <string name="settings_services_search_fail">Ricerca non riuscita</string>
+    <string name="account_google_setup_needed">L’accesso Google non è ancora configurato in questa build.</string>
+    <string name="account_delete">Elimina account Google</string>
+    <string name="account_delete_title">Eliminare il tuo account Google da Route Planner?</string>
+    <string name="account_delete_body">Questa operazione elimina l’account Firebase per l’app e ti disconnette. I percorsi restano su questo telefono perché la sincronizzazione cloud non è ancora disponibile.</string>
+    <string name="settings_diagnostics">Privacy e diagnostica</string>
+    <string name="settings_diagnostics_on">La segnalazione facoltativa è attiva</string>
+    <string name="settings_diagnostics_off">Nessuna segnalazione facoltativa</string>
+    <string name="settings_diagnostics_hint">Questi controlli sono disattivati per impostazione predefinita. Nomi dei percorsi, indirizzi, coordinate, note ed e-mail dell’account non vengono mai inviati come eventi analitici.</string>
+    <string name="settings_usage_analytics">Analisi anonima dell’uso</string>
+    <string name="settings_usage_analytics_hint">Aiuta a migliorare i flussi generali dell’app. Pubblicità e personalizzazione restano disattivate.</string>
+    <string name="settings_crash_reports">Rapporti di crash</string>
+    <string name="settings_crash_reports_hint">Invia diagnostica tecnica dei crash a Firebase Crashlytics quando Firebase è configurato.</string>
 </resources>

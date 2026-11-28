@@ -50,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +91,7 @@ fun EditRouteScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val libraryStops by viewModel.stopLibrary.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val userLocation = rememberUserLocation(autoRequest = true)
     var recenterToken by remember { mutableIntStateOf(0) }
     var showLibraryPicker by remember { mutableStateOf(false) }
@@ -98,7 +101,8 @@ fun EditRouteScreen(
     var pinNotes by remember { mutableStateOf("") }
     val showStopsEditor = true
 
-    val previewStops = remember(state.stops) {
+    val configuration = LocalConfiguration.current
+    val previewStops = remember(state.stops, configuration) {
         state.stops.mapIndexedNotNull { index, stop ->
             val lat = stop.latitudeText.toDoubleOrNull()
             val lon = stop.longitudeText.toDoubleOrNull()
@@ -108,7 +112,7 @@ fun EditRouteScreen(
                 routeId = 0,
                 position = index,
                 name = stop.name.ifBlank {
-                    context.getString(R.string.edit_stop_default_name, index + 1)
+                    localizedResources.getString(R.string.edit_stop_default_name, index + 1)
                 },
                 latitude = lat,
                 longitude = lon,
@@ -511,7 +515,7 @@ fun EditRouteScreen(
                 onConfirm = {
                     viewModel.addPinnedStop(
                         name = pinName.ifBlank {
-                            context.getString(R.string.gps_stop_default_name)
+                            localizedResources.getString(R.string.gps_stop_default_name)
                         },
                         latitude = pin.latitude,
                         longitude = pin.longitude,

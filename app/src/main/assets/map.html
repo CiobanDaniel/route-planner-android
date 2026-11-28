@@ -11,8 +11,11 @@
         html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; background: #f4efe6; }
         .leaflet-container { background: #f4efe6; }
         body.theme-dark, body.theme-dark .leaflet-container { background: #161c24; }
+        body.theme-dark.night-tiles .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(95%);
+        }
         /* Tiles only — never filter markers / nav line / satellite.
-           Light Map + Driving: HOT OSM. Dark / Night: Carto Dark Matter (not inverted HOT). */
+           Light Map + Driving: HOT OSM. Dark / Night: Inverted HOT. */
         body.driving-style.style-streets:not(.night-tiles) .leaflet-tile-pane {
             filter: contrast(1.12) saturate(1.12);
         }
@@ -195,12 +198,12 @@
 
     function nightStreetLayer() {
         return L.tileLayer(
-            'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
             Object.assign({
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                attribution: '&copy; OpenStreetMap contributors, Tiles HOT / OSM France',
                 maxZoom: 20,
                 maxNativeZoom: 20,
-                subdomains: 'abcd'
+                subdomains: 'abc'
             }, TILE_OPTS)
         );
     }

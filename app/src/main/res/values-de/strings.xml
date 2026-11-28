@@ -109,7 +109,7 @@
     <string name="account_title">Konto</string>
     <string name="account_menu_signed_out">Auf diesem Telefon — tippen für Google-Anmeldung</string>
     <string name="account_signed_out_title">Nicht angemeldet</string>
-    <string name="account_signed_out_body">Touren, Stopps und die Bibliothek bleiben auf diesem Telefon. Die Google-Anmeldung synchronisiert Geräte und ermöglicht Teilen im Team. In dieser Version noch nicht enthalten.</string>
+    <string name="account_signed_out_body">Die Google-Anmeldung erstellt ein Konto für diese App. Touren, Stopps und die Bibliothek bleiben auf diesem Telefon, bis Cloud-Sync verfügbar ist.</string>
     <string name="account_signed_in_title">Angemeldet</string>
     <string name="account_signed_in_body">Das ist nur eine lokale Sitzung. Cloud-Sync ist noch nicht angeschlossen — exportiere ein JSON-Backup aus den Einstellungen, wenn du eine Kopie auf einem anderen Telefon brauchst.</string>
     <string name="account_display_name">Anzeigename</string>
@@ -123,7 +123,7 @@
     <string name="account_google_sign_in">Weiter mit Google</string>
     <string name="account_google_sign_out">Von Google abmelden</string>
     <string name="account_google_body">Die Anmeldung mit einem Google-Konto synchronisiert Touren zwischen Telefonen und ermöglicht Teilen im Team. In dieser Version nicht aktiv.</string>
-    <string name="account_google_unavailable">Google-Anmeldung ist in dieser Version noch nicht enthalten. Deine Daten bleiben auf diesem Gerät.</string>
+    <string name="account_google_unavailable">Die Google-Anmeldung braucht in diesem Build eine Firebase-Einrichtung. Deine Daten bleiben auf diesem Gerät.</string>
     <string name="account_google_privacy">Wenn die Google-Anmeldung kommt, sieht Google den Namen und die E-Mail des Kontos, das du wählst. Cloud-Sync ist ein separater Schritt und noch nicht aktiv.</string>
     <string name="account_google_connecting">Verbindung mit Google…</string>
     <string name="account_google_failed">Anmeldung mit Google fehlgeschlagen. Versuche es erneut.</string>
@@ -848,4 +848,16 @@
     <string name="settings_services_search_ok">Suche OK</string>
     <string name="settings_services_search_fallback">Suche OK (Fallback-Server)</string>
     <string name="settings_services_search_fail">Suche fehlgeschlagen</string>
+    <string name="account_google_setup_needed">Die Google-Anmeldung ist in diesem Build noch nicht eingerichtet.</string>
+    <string name="account_delete">Google-Konto löschen</string>
+    <string name="account_delete_title">Google-Konto aus Route Planner löschen?</string>
+    <string name="account_delete_body">Dadurch wird das Firebase-Konto für diese App gelöscht und du wirst abgemeldet. Deine Routen bleiben auf diesem Telefon, da Cloud-Sync noch nicht verfügbar ist.</string>
+    <string name="settings_diagnostics">Datenschutz und Diagnose</string>
+    <string name="settings_diagnostics_on">Optionale Berichte sind aktiv</string>
+    <string name="settings_diagnostics_off">Keine optionalen Berichte</string>
+    <string name="settings_diagnostics_hint">Diese Optionen sind standardmäßig aus. Routennamen, Adressen, Koordinaten, Notizen und Konto-E-Mail werden nie als Analyseereignisse gesendet.</string>
+    <string name="settings_usage_analytics">Anonyme Nutzungsanalyse</string>
+    <string name="settings_usage_analytics_hint">Hilft, allgemeine Abläufe der App zu verbessern. Werbung und Personalisierung bleiben deaktiviert.</string>
+    <string name="settings_crash_reports">Crash-Berichte</string>
+    <string name="settings_crash_reports_hint">Sendet technische Crash-Diagnosen an Firebase Crashlytics, wenn Firebase eingerichtet ist.</string>
 </resources>

@@ -22,16 +22,22 @@ object AutoBackup {
 
     fun write(context: Context, treeUriString: String, json: String): Boolean {
         if (treeUriString.isBlank()) return false
-        val treeUri = Uri.parse(treeUriString)
-        val tree = DocumentFile.fromTreeUri(context, treeUri) ?: return false
-        if (!tree.canWrite()) return false
-        tree.findFile(FILE_NAME)?.delete()
-        val file = tree.createFile("application/json", FILE_NAME) ?: return false
-        return runCatching {
-            context.contentResolver.openOutputStream(file.uri)?.use { stream ->
-                stream.write(json.toByteArray(Charsets.UTF_8))
-            } != null
+        var file: DocumentFile? = null
+        val verified = runCatching {
+            val tree = DocumentFile.fromTreeUri(context, Uri.parse(treeUriString)) ?: return@runCatching false
+            if (!tree.canWrite()) return@runCatching false
+            // A fresh name keeps all previous backups intact on failure.
+            val name = "route-planner-auto-${System.currentTimeMillis()}-${java.util.UUID.randomUUID()}.json"
+            val created = tree.createFile("application/json", name) ?: return@runCatching false
+            file = created
+            val bytes = json.toByteArray(Charsets.UTF_8)
+            context.contentResolver.openOutputStream(created.uri)?.use { stream ->
+                stream.write(bytes)
+            } ?: return@runCatching false
+            context.contentResolver.openInputStream(created.uri)?.use { it.readBytes().contentEquals(bytes) } == true
         }.getOrDefault(false)
+        if (!verified) runCatching { file?.delete() }
+        return verified
     }
 
     fun writeUri(context: Context, uri: Uri, bytes: ByteArray): Boolean {

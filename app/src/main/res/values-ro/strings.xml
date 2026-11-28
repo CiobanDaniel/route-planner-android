@@ -109,7 +109,7 @@
     <string name="account_title">Cont</string>
     <string name="account_menu_signed_out">Pe telefon — atinge pentru Google</string>
     <string name="account_signed_out_title">Neautentificat</string>
-    <string name="account_signed_out_body">Rutele, opririle și biblioteca rămân pe acest telefon. Autentificarea Google va sincroniza pe mai multe dispozitive și va permite partajarea în echipă. Nu este încă în această versiune.</string>
+    <string name="account_signed_out_body">Autentificarea Google creează un cont pentru această aplicație. Rutele, opririle și biblioteca rămân pe telefon până apare sincronizarea cloud.</string>
     <string name="account_signed_in_title">Autentificat</string>
     <string name="account_signed_in_body">Aceasta este doar o sesiune locală. Sincronizarea cloud nu este conectată încă — exportă un backup JSON din Setări dacă ai nevoie de o copie pe alt telefon.</string>
     <string name="account_display_name">Nume afișat</string>
@@ -123,7 +123,7 @@
     <string name="account_google_sign_in">Continuă cu Google</string>
     <string name="account_google_sign_out">Deconectează-te de la Google</string>
     <string name="account_google_body">Autentificarea cu un cont Google va sincroniza rutele pe mai multe telefoane și va permite partajarea în echipă. Nu este activă în această versiune.</string>
-    <string name="account_google_unavailable">Autentificarea Google nu este încă în această versiune. Datele rămân pe acest dispozitiv.</string>
+    <string name="account_google_unavailable">Autentificarea Google are nevoie de configurare Firebase în această versiune. Datele rămân pe dispozitiv.</string>
     <string name="account_google_privacy">Când va exista autentificarea Google, Google va vedea numele și emailul contului pe care îl alegi. Sincronizarea cloud este un pas separat și nu este activă încă.</string>
     <string name="account_google_connecting">Se conectează la Google…</string>
     <string name="account_google_failed">Nu s-a putut autentifica cu Google. Încearcă din nou.</string>
@@ -204,6 +204,7 @@
     <string name="detail_map_free">Hartă liberă · atinge locația pentru a relua</string>
     <plurals name="detail_delivery_active">
         <item quantity="one">Livrare activă · %1$d rămasă</item>
+        <item quantity="few">Livrare activă · %1$d rămase</item>
         <item quantity="other">Livrare activă · %1$d rămase</item>
     </plurals>
     <string name="detail_long_press_hint">Ține apăsat pe hartă pentru a adăuga o oprire</string>
@@ -215,6 +216,7 @@
     <string name="detail_no_coordinates">Fără coordonate</string>
     <plurals name="detail_completed_count">
         <item quantity="one">%1$d/%2$d finalizată</item>
+        <item quantity="few">%1$d/%2$d finalizate</item>
         <item quantity="other">%1$d/%2$d finalizate</item>
     </plurals>
     <string name="msg_no_map_pin">Această oprire nu are încă un pin pe hartă</string>
@@ -236,6 +238,7 @@
     <string name="nav_done">Gata</string>
     <plurals name="nav_left">
         <item quantity="one">%1$d rămasă</item>
+        <item quantity="few">%1$d rămase</item>
         <item quantity="other">%1$d rămase</item>
     </plurals>
     <string name="nav_all_completed">Toate opririle finalizate</string>
@@ -331,6 +334,7 @@
     <string name="home_resume_delivery_body">Continuă „%1$s”</string>
     <plurals name="home_stops_summary">
         <item quantity="one">%1$d oprire · %2$d finalizate</item>
+        <item quantity="few">%1$d opriri · %2$d finalizate</item>
         <item quantity="other">%1$d opriri · %2$d finalizate</item>
     </plurals>
     <string name="cd_delete_route">Șterge ruta</string>
@@ -393,6 +397,7 @@
 
     <plurals name="msg_stops_missing_pins">
         <item quantity="one">%1$d oprire rămasă fără pin pe hartă</item>
+        <item quantity="few">%1$d opriri rămase fără pin pe hartă</item>
         <item quantity="other">%1$d opriri rămase fără pin pe hartă</item>
     </plurals>
     <string name="detail_from_previous">%1$s față de precedente</string>
@@ -851,4 +856,16 @@
     <string name="settings_services_search_ok">Căutare OK</string>
     <string name="settings_services_search_fallback">Căutare OK (server de rezervă)</string>
     <string name="settings_services_search_fail">Căutarea a eșuat</string>
+    <string name="account_google_setup_needed">Autentificarea Google nu este configurată încă în această versiune.</string>
+    <string name="account_delete">Șterge contul Google</string>
+    <string name="account_delete_title">Ștergi contul Google din Route Planner?</string>
+    <string name="account_delete_body">Aceasta șterge contul Firebase pentru aplicație și te deconectează. Rutele rămân pe telefon deoarece sincronizarea cloud nu este disponibilă încă.</string>
+    <string name="settings_diagnostics">Confidențialitate și diagnosticare</string>
+    <string name="settings_diagnostics_on">Raportarea opțională este pornită</string>
+    <string name="settings_diagnostics_off">Fără raportare opțională</string>
+    <string name="settings_diagnostics_hint">Aceste controale sunt oprite implicit. Numele rutelor, adresele, coordonatele, notițele și emailul contului nu sunt trimise ca evenimente de analiză.</string>
+    <string name="settings_usage_analytics">Analiză anonimă de utilizare</string>
+    <string name="settings_usage_analytics_hint">Ajută la îmbunătățirea fluxurilor generale ale aplicației. Reclamele și personalizarea rămân oprite.</string>
+    <string name="settings_crash_reports">Rapoarte de crash</string>
+    <string name="settings_crash_reports_hint">Trimite diagnosticare tehnică a crash-urilor către Firebase Crashlytics când Firebase este configurat.</string>
 </resources>

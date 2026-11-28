@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -47,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -202,6 +204,7 @@ fun RouteDetailScreen(
     var newStopNotes by remember { mutableStateOf("") }
     var locationMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val takeFailPhoto = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
     ) { success ->
@@ -222,7 +225,7 @@ fun RouteDetailScreen(
 
     LaunchedEffect(noticeMessageRes) {
         val res = noticeMessageRes ?: return@LaunchedEffect
-        locationMessage = context.getString(res)
+        locationMessage = localizedResources.getString(res)
         viewModel.consumeNotice()
     }
 
@@ -306,7 +309,7 @@ fun RouteDetailScreen(
                 next.latitude!!,
                 next.longitude!!,
             )
-            context.getString(
+            localizedResources.getString(
                 R.string.distance_away,
                 GeoUtils.formatDistance(meters, settings.distanceUnit),
                 GeoUtils.formatBearing(bearing),
@@ -338,7 +341,7 @@ fun RouteDetailScreen(
         val lat = stop.latitude
         val lng = stop.longitude
         if (lat == null || lng == null) {
-            locationMessage = context.getString(R.string.msg_no_map_pin)
+            locationMessage = localizedResources.getString(R.string.msg_no_map_pin)
             return
         }
         val opened = ExternalNavigation.openDrivingDirections(
@@ -348,14 +351,14 @@ fun RouteDetailScreen(
             label = stop.name,
         )
         if (!opened) {
-            locationMessage = context.getString(R.string.msg_maps_unavailable)
+            locationMessage = localizedResources.getString(R.string.msg_maps_unavailable)
         }
     }
 
     fun openRemainingInMaps() {
         val remainingPins = stops.filter { !it.isCompleted && it.latitude != null && it.longitude != null }
         if (remainingPins.isEmpty()) {
-            locationMessage = context.getString(R.string.msg_no_map_pin)
+            locationMessage = localizedResources.getString(R.string.msg_no_map_pin)
             return
         }
         val dests = remainingPins.map { it.latitude!! to it.longitude!! }.toMutableList()
@@ -374,8 +377,8 @@ fun RouteDetailScreen(
         val origin = userFix?.let { it.latitude to it.longitude }
         val opened = ExternalNavigation.openMultiStopDriving(context, dests, origin)
         locationMessage = when {
-            !opened -> context.getString(R.string.msg_maps_unavailable)
-            truncated -> context.getString(R.string.maps_stops_truncated, ExternalNavigation.MAX_MAPS_STOPS)
+            !opened -> localizedResources.getString(R.string.msg_maps_unavailable)
+            truncated -> localizedResources.getString(R.string.maps_stops_truncated, ExternalNavigation.MAX_MAPS_STOPS)
             else -> null
         }
     }
@@ -384,12 +387,12 @@ fun RouteDetailScreen(
         val fix = userFix
         if (!userLocation.hasPermission) {
             userLocation.requestPermission()
-            locationMessage = context.getString(R.string.msg_allow_location_nav)
+            locationMessage = localizedResources.getString(R.string.msg_allow_location_nav)
             return
         }
         if (fix == null) {
             userLocation.refresh()
-            locationMessage = context.getString(R.string.msg_waiting_gps)
+            locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
             return
         }
         locationMessage = null
@@ -462,36 +465,27 @@ fun RouteDetailScreen(
             val wide = AppPanes.isWide(maxWidth)
             val queueRail = AppPanes.showDrivingQueueRail(maxWidth)
             Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.fillMaxWidth(),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = AppPanes.TitleMaxWidth),
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .widthIn(max = AppPanes.TitleMaxWidth),
+                FloatingIsland(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    contentPadding = 8.dp,
                 ) {
-                    FloatingIsland(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(22.dp),
-                        contentPadding = 12.dp,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                        FloatingCircleButton(onClick = onBack, embedded = true) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.cd_back),
-                                tint = IslandColors.onSurface,
-                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = IslandColors.onSurface)
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
                             Text(
                                 text = data?.route?.name ?: stringResource(R.string.route_fallback_name),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 color = IslandColors.onSurface,
-                                maxLines = 2,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
@@ -510,61 +504,53 @@ fun RouteDetailScreen(
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = IslandColors.onSurfaceMuted,
-                                maxLines = 3,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        FloatingCircleButton(
-                            onClick = { showExportDialog = true },
-                            embedded = true,
-                        ) {
-                            Icon(
-                                Icons.Default.Share,
-                                contentDescription = stringResource(R.string.cd_share_route),
-                                tint = IslandColors.onSurface,
-                            )
+                        androidx.compose.material3.IconButton(onClick = { showExportDialog = true }) {
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share_route), tint = IslandColors.onSurface)
                         }
                         if (planningChrome) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            FloatingCircleButton(
-                                onClick = { data?.route?.id?.let(onEdit) },
-                                embedded = true,
-                            ) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = stringResource(R.string.cd_edit),
-                                    tint = IslandColors.onSurface,
-                                )
+                            androidx.compose.material3.IconButton(onClick = { data?.route?.id?.let(onEdit) }) {
+                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_edit), tint = IslandColors.onSurface)
                             }
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        ScreenMenuButton(onClick = onOpenMenu)
+                        androidx.compose.material3.IconButton(onClick = onOpenMenu) {
+                            Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_open), tint = IslandColors.onSurface)
                         }
-                    }
-                    MapAttributionChip(
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    if (navigating && compassLow && !compassHintDismissed) {
-                        CompassCalibrationHint(
-                            onDismiss = { compassHintDismissed = true },
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
                     }
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(horizontalAlignment = Alignment.End) {
+                MapAttributionChip(modifier = Modifier.padding(top = 8.dp))
+                if (navigating && compassLow && !compassHintDismissed) {
+                    CompassCalibrationHint(
+                        onDismiss = { compassHintDismissed = true },
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
+
+            // Map-gap Box: side pane / HUD overlay the map. Do not grow wrapping chrome.
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
+                // Map Controls
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
                     MapLayersButton(onClick = chrome::openLayersMenu)
                     if (planningChrome) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        FloatingCircleButton(onClick = { showAddStopMenu = true }) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = stringResource(R.string.cd_add_stop),
-                                tint = IslandColors.onSurface,
-                            )
+                        FloatingCircleButton(
+                            onClick = { showAddStopMenu = true },
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_stop), tint = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
                     FloatingCircleButton(
                         onClick = {
                             if (!planningChrome) {
@@ -573,12 +559,12 @@ fun RouteDetailScreen(
                             }
                             if (!userLocation.hasPermission) {
                                 userLocation.requestPermission()
-                                locationMessage = context.getString(R.string.msg_allow_location_gps)
+                                locationMessage = localizedResources.getString(R.string.msg_allow_location_gps)
                             } else {
                                 val loc = userFix
                                 if (loc != null) {
                                     viewModel.addStopAtCurrentLocation(
-                                        context.getString(R.string.gps_stop_default_name),
+                                        localizedResources.getString(R.string.gps_stop_default_name),
                                         loc.latitude,
                                         loc.longitude,
                                     )
@@ -586,7 +572,7 @@ fun RouteDetailScreen(
                                     chrome.bumpRecenter()
                                 } else {
                                     userLocation.refresh()
-                                    locationMessage = context.getString(R.string.msg_waiting_gps)
+                                    locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                                 }
                             }
                         },
@@ -602,14 +588,7 @@ fun RouteDetailScreen(
                         )
                     }
                 }
-            }
 
-            // Map-gap Box: side pane / HUD overlay the map. Do not grow wrapping chrome.
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
             if (deliveryActive) {
                 DeliveryHud(
                     modifier = Modifier
@@ -650,7 +629,7 @@ fun RouteDetailScreen(
                         val fix = userFix
                         if (fix == null) {
                             userLocation.refresh()
-                            locationMessage = context.getString(R.string.msg_waiting_gps)
+                            locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                         } else {
                             viewModel.retryNavigation(fix)
                         }
@@ -675,7 +654,7 @@ fun RouteDetailScreen(
                     onRunAgain = {
                         val fix = userFix
                         if (fix == null) {
-                            locationMessage = context.getString(R.string.msg_waiting_gps)
+                            locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                         } else {
                             chrome.enterDrivingFollow(settings.defaultFollowMe)
                             viewModel.runAgain(fix)
@@ -736,7 +715,7 @@ fun RouteDetailScreen(
                                     context,
                                     stop,
                                     etaLabel,
-                                    context.getString(R.string.share_eta_chooser),
+                                    localizedResources.getString(R.string.share_eta_chooser),
                                 )
                             }
                         },
@@ -814,10 +793,10 @@ fun RouteDetailScreen(
                             onClick = {
                                 val loc = userFix
                                 if (loc == null) {
-                                    locationMessage = context.getString(R.string.msg_waiting_gps)
+                                    locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                                 } else {
                                     viewModel.setGpsOrigin(
-                                        context.getString(R.string.origin_stop_default_name),
+                                        localizedResources.getString(R.string.origin_stop_default_name),
                                         loc.latitude,
                                         loc.longitude,
                                     )
@@ -861,7 +840,7 @@ fun RouteDetailScreen(
                                     if (allDone) {
                                         val fix = userFix
                                         if (fix == null) {
-                                            locationMessage = context.getString(R.string.msg_waiting_gps)
+                                            locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                                         } else {
                                             chrome.enterDrivingFollow(settings.defaultFollowMe)
                                             viewModel.runAgain(fix)
@@ -895,10 +874,10 @@ fun RouteDetailScreen(
                                     onClick = {
                                         val loc = userFix
                                         if (loc == null) {
-                                            locationMessage = context.getString(R.string.msg_waiting_gps)
+                                            locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                                         } else {
                                             viewModel.setGpsOrigin(
-                                                context.getString(R.string.origin_stop_default_name),
+                                                localizedResources.getString(R.string.origin_stop_default_name),
                                                 loc.latitude,
                                                 loc.longitude,
                                             )
@@ -921,7 +900,7 @@ fun RouteDetailScreen(
                                     onClick = {
                                         val fix = userFix
                                         if (fix == null) {
-                                            locationMessage = context.getString(R.string.msg_waiting_gps)
+                                            locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                                         } else {
                                             viewModel.previewPathToNext(fix)
                                         }
@@ -1214,7 +1193,7 @@ fun RouteDetailScreen(
                             subject = it.route.name,
                             body = PlaceFormatExporter.routeCsv(it),
                             mimeType = "text/csv",
-                            chooserTitle = context.getString(R.string.csv_export_chooser),
+                            chooserTitle = localizedResources.getString(R.string.csv_export_chooser),
                         )
                     }
                     showExportDialog = false
@@ -1226,7 +1205,7 @@ fun RouteDetailScreen(
                             subject = it.route.name,
                             body = PlaceFormatExporter.routeGpx(it),
                             mimeType = "application/gpx+xml",
-                            chooserTitle = context.getString(R.string.export_places_chooser),
+                            chooserTitle = localizedResources.getString(R.string.export_places_chooser),
                         )
                     }
                     showExportDialog = false
@@ -1238,7 +1217,7 @@ fun RouteDetailScreen(
                             subject = it.route.name,
                             body = PlaceFormatExporter.routeKml(it),
                             mimeType = "application/vnd.google-earth.kml+xml",
-                            chooserTitle = context.getString(R.string.export_places_chooser),
+                            chooserTitle = localizedResources.getString(R.string.export_places_chooser),
                         )
                     }
                     showExportDialog = false
@@ -1250,7 +1229,7 @@ fun RouteDetailScreen(
                             subject = it.route.name,
                             body = PlaceFormatExporter.routeGeoJson(it),
                             mimeType = "application/geo+json",
-                            chooserTitle = context.getString(R.string.export_places_chooser),
+                            chooserTitle = localizedResources.getString(R.string.export_places_chooser),
                         )
                     }
                     showExportDialog = false
@@ -1266,7 +1245,7 @@ fun RouteDetailScreen(
                             context,
                             file,
                             "text/calendar",
-                            context.getString(R.string.export_ics_chooser),
+                            localizedResources.getString(R.string.export_ics_chooser),
                             route.route.name,
                         )
                     }
@@ -1279,7 +1258,7 @@ fun RouteDetailScreen(
                             context,
                             file,
                             "application/pdf",
-                            context.getString(R.string.export_pdf_chooser),
+                            localizedResources.getString(R.string.export_pdf_chooser),
                             route.route.name,
                         )
                     }
@@ -1490,10 +1469,10 @@ fun RouteDetailScreen(
                     val fix = userFix
                     if (!userLocation.hasPermission) {
                         userLocation.requestPermission()
-                        locationMessage = context.getString(R.string.msg_allow_location_nav)
+                        locationMessage = localizedResources.getString(R.string.msg_allow_location_nav)
                     } else if (fix == null) {
                         userLocation.refresh()
-                        locationMessage = context.getString(R.string.msg_waiting_gps)
+                        locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                     } else {
                         locationMessage = null
                         followPaused = false

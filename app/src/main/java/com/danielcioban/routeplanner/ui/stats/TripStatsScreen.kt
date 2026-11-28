@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,7 +40,6 @@ import com.danielcioban.routeplanner.ui.map.RouteMapBackdrop
 import com.danielcioban.routeplanner.ui.menu.ScreenMenuButton
 import com.danielcioban.routeplanner.ui.theme.IslandColors
 import com.danielcioban.routeplanner.util.GeoUtils
-import java.util.Locale
 
 @Composable
 fun TripStatsScreen(
@@ -49,6 +49,7 @@ fun TripStatsScreen(
     onOpenMenu: () -> Unit = {},
 ) {
     val summary by viewModel.summary.collectAsStateWithLifecycle()
+    val locale = LocalConfiguration.current.locales[0]
     val fuel by viewModel.fuel.collectAsStateWithLifecycle()
     val liters = fuel.mapNotNull { it.liters }.sum()
     val km = fuel.mapNotNull { it.odometerKm }.let { readings ->
@@ -141,15 +142,15 @@ fun TripStatsScreen(
                     )
                     StatRow(
                         stringResource(R.string.stats_per_hour),
-                        String.format(Locale.getDefault(), "%.1f", summary.stopsPerHour),
+                        String.format(locale, "%.1f", summary.stopsPerHour),
                     )
                     StatRow(
                         stringResource(R.string.stats_cod),
-                        String.format(Locale.getDefault(), "%.2f", summary.codCollected),
+                        String.format(locale, "%.2f", summary.codCollected),
                     )
                     StatRow(
                         stringResource(R.string.stats_fuel_liters),
-                        String.format(Locale.getDefault(), "%.1f", liters),
+                        String.format(locale, "%.1f", liters),
                     )
                     if (km > 0) {
                         StatRow(

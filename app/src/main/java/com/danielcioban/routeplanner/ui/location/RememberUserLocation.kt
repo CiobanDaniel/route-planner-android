@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.danielcioban.routeplanner.R
@@ -41,6 +42,7 @@ fun rememberUserLocation(
     highFrequency: Boolean = false,
 ): UserLocationUi {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val scope = rememberCoroutineScope()
     val permission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
@@ -73,7 +75,7 @@ fun rememberUserLocation(
         message = when {
             DevLocationSim.isActive() -> null
             accuracy != null && accuracy > PoorGpsAccuracyMeters ->
-                context.getString(R.string.msg_poor_gps)
+                localizedResources.getString(R.string.msg_poor_gps)
             else -> null
         }
     }
@@ -87,7 +89,7 @@ fun rememberUserLocation(
                 return@launch
             }
             if (!permission.status.isGranted && !context.hasLocationPermission()) {
-                message = context.getString(R.string.msg_location_permission_needed)
+                message = localizedResources.getString(R.string.msg_location_permission_needed)
                 return@launch
             }
             isLoading = true
@@ -98,7 +100,7 @@ fun rememberUserLocation(
             if (loc != null) {
                 applyLocation(loc)
             } else if (coordinate == null) {
-                message = context.getString(R.string.msg_waiting_gps_hint)
+                message = localizedResources.getString(R.string.msg_waiting_gps_hint)
             }
         }
     }

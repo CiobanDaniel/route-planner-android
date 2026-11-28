@@ -76,19 +76,14 @@ Do this before promising a cloud product. Testers do not need in-app login.
 
 Play **Vitals** (crash rates, ANRs) start from Internal testing even with **no Firebase**. That is enough to ship Internal without Crashlytics.
 
-## 4. Crash reporting (Crashlytics only — no Analytics, no Auth)
+## 4. Firebase, accounts, analytics, and crash reporting
 
-Play Vitals without Firebase is already useful. Crashlytics is better stack traces.
+Play Vitals without Firebase is already useful. Firebase is now opt-in in the app and adds Google
+sign-in plus optional analytics and Crashlytics. Follow the full, current setup guide:
+[`GOOGLE_SERVICES.md`](GOOGLE_SERVICES.md). It includes the required SHA fingerprints, Auth
+provider switch, account deletion test, and privacy consequences.
 
-1. Create a Firebase project, add Android app `com.danielcioban.routeplanner`.
-2. Download `google-services.json` into **`app/`** (already gitignored).
-3. Rebuild. Gradle applies Google Services + Crashlytics **only when that file exists**,
-   so CI stays green without Firebase. Analytics and Auth are **excluded** even if a
-   transitive dependency tries to pull them in. Do not add `firebase-analytics` or `firebase-auth`.
-4. In the Firebase console, do not enable Google Analytics for this app.
-5. Update `docs/PRIVACY_DRAFT.md` / `docs/privacy/index.html` if the Crashlytics sentence
-   is no longer accurate, then re-host.
-6. Do **not** commit `google-services.json`.
+Do **not** commit `google-services.json`.
 
 ## 5. Production routing / geocoding
 

@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -150,6 +151,7 @@ fun QuickDriveScreen(
     var followPaused by remember { mutableStateOf(false) }
     var locationMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
 
     LaunchedEffect(sessionReady) {
         if (sessionReady == false) onFinished()
@@ -159,7 +161,7 @@ fun QuickDriveScreen(
     }
     LaunchedEffect(noticeMessageRes) {
         val res = noticeMessageRes ?: return@LaunchedEffect
-        locationMessage = context.getString(res)
+        locationMessage = localizedResources.getString(res)
         viewModel.consumeNotice()
     }
     LaunchedEffect(userLocation.message) {
@@ -254,7 +256,7 @@ fun QuickDriveScreen(
                         onClick = {
                             if (!userLocation.hasPermission) {
                                 userLocation.requestPermission()
-                                locationMessage = context.getString(R.string.msg_allow_location_nav)
+                                locationMessage = localizedResources.getString(R.string.msg_allow_location_nav)
                             } else {
                                 userLocation.refresh()
                                 followPaused = false
@@ -305,7 +307,7 @@ fun QuickDriveScreen(
                 onRetry = {
                     val fix = userFix
                     if (fix == null) {
-                        locationMessage = context.getString(R.string.msg_waiting_gps)
+                        locationMessage = localizedResources.getString(R.string.msg_waiting_gps)
                     } else {
                         viewModel.retry(fix)
                     }
@@ -316,7 +318,7 @@ fun QuickDriveScreen(
                     val lat = stop.latitude
                     val lng = stop.longitude
                     if (lat == null || lng == null) {
-                        locationMessage = context.getString(R.string.msg_no_map_pin)
+                        locationMessage = localizedResources.getString(R.string.msg_no_map_pin)
                     } else {
                         ExternalNavigation.openDrivingDirections(context, lat, lng, stop.name)
                     }

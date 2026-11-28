@@ -148,8 +148,8 @@ private fun displayAxes(rotation: Int): Pair<Int, Int> = when (rotation) {
 }
 
 private fun uprightFacingAxes(rotation: Int): Pair<Int, Int> = when (rotation) {
-    Surface.ROTATION_90 -> SensorManager.AXIS_Z to SensorManager.AXIS_MINUS_X
+    Surface.ROTATION_90 -> SensorManager.AXIS_Y to SensorManager.AXIS_MINUS_Z
     Surface.ROTATION_180 -> SensorManager.AXIS_MINUS_X to SensorManager.AXIS_MINUS_Z
-    Surface.ROTATION_270 -> SensorManager.AXIS_MINUS_Z to SensorManager.AXIS_X
-    else -> SensorManager.AXIS_X to SensorManager.AXIS_Z
+    Surface.ROTATION_270 -> SensorManager.AXIS_MINUS_Y to SensorManager.AXIS_MINUS_Z
+    else -> SensorManager.AXIS_X to SensorManager.AXIS_MINUS_Z
 }

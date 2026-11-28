@@ -6,7 +6,7 @@
 
 **App:** Route Planner (`com.danielcioban.routeplanner`)  
 **Operator:** Cioban Daniel (update with legal entity when incorporated)  
-**Last updated:** 2026-08-25
+**Last updated:** 2026-10-13
 
 ## What the app stores on device
 
@@ -31,9 +31,11 @@ Depending on features used:
 | Google Maps / Waze (optional) | External navigation | Destination coordinates via intent |
 | User’s email app (optional) | Report a problem | App version, device model, last routing error, plus what they type |
 | Google Play Vitals | Stability on Play installs | Crash/ANR metrics collected by Play — not Firebase |
-| Firebase Crashlytics (optional) | Stack traces for the maintainer | Only if the build includes `google-services.json`. No Analytics, no Auth |
+| Firebase Authentication (optional) | Google sign-in | Google account basic profile and Firebase account identifier, only after the user chooses Google sign-in. Routes stay on-device; no cloud sync. |
+| Firebase Analytics (optional) | Improve general app flows | Pseudonymous analytics identifiers and limited app interaction events, only after the user enables it in Settings. No route names, addresses, coordinates, notes, e-mail, ads, or personalization. |
+| Firebase Crashlytics (optional) | Stack traces for the maintainer | Technical crash diagnostics, only after the user enables it in Settings and the build is configured for Firebase. |
 
-No account system is shipped yet. When authentication or cloud sync is added, this policy must be updated.
+Google account deletion is available in the app. It deletes the Firebase Authentication account and does not delete device-local routes because cloud sync is not available. This policy must be expanded before any remote route storage is added.
 
 ## Location
 

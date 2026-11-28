@@ -26,7 +26,7 @@
     <h1>Privacy policy</h1>
     <p class="muted">App: Route Planner (<code>com.danielcioban.routeplanner</code>)<br />
       Operator: Cioban Daniel (update with legal entity when incorporated)<br />
-      Last updated: 2026-08-25</p>
+      Last updated: 2026-10-13</p>
     <div class="note muted">
       Have counsel review this page before a commercial Play listing or collecting accounts.
       Internal testing can use this hosted URL. Do not treat a GitHub markdown file as the Play privacy URL.
@@ -77,16 +77,26 @@
         <tr>
           <td>Google Play Vitals</td>
           <td>Stability on Play installs</td>
-          <td>Crash and ANR metrics collected by Play — not Firebase. No in-app account.</td>
+          <td>Crash and ANR metrics collected by Play — not Firebase.</td>
+        </tr>
+        <tr>
+          <td>Firebase Authentication (optional)</td>
+          <td>Google sign-in</td>
+          <td>Basic Google profile and Firebase account identifier, only after you choose Google sign-in. Routes stay on your device; cloud sync is not available.</td>
+        </tr>
+        <tr>
+          <td>Firebase Analytics (optional)</td>
+          <td>Improve general app flows</td>
+          <td>Pseudonymous analytics identifiers and limited app interaction events, only after you enable it in Settings. No route names, addresses, coordinates, notes, email, ads, or personalization.</td>
         </tr>
         <tr>
           <td>Firebase Crashlytics (optional)</td>
           <td>Deobfuscated crash stacks for the maintainer</td>
-          <td>Only if this build includes <code>google-services.json</code>. Stack traces and device model. No Analytics. No Auth.</td>
+          <td>Technical crash diagnostics, only after you enable it in Settings and this build includes <code>google-services.json</code>.</td>
         </tr>
       </tbody>
     </table>
-    <p>No account system is shipped. When authentication or cloud sync is added, this policy must be updated.</p>
+    <p>Google account deletion is available in the app. It deletes the Firebase Authentication account and does not delete device-local routes because cloud sync is not available. This policy must be expanded before any remote route storage is added.</p>
 
     <h2>Location</h2>
     <p>Precise location is used to center the map, add GPS stops, and navigate, including a foreground location service while a trip is active. Permission is requested at runtime. Location is not sold.</p>
@@ -98,7 +108,7 @@
     <p>Privacy questions: maintainer contact on the GitHub profile for CiobanDaniel. In-app <strong>Report a problem</strong> (About and Settings) opens an email draft with version and last routing error.</p>
 
     <h2>Română (pe scurt)</h2>
-    <p class="muted">Datele de rute rămân pe telefon. Harta, OSRM și Nominatim primesc coordonate sau text de căutare. Play Vitals măsoară crash-uri pe instalările din Play. Crashlytics e opțional și doar pentru stive de crash, fără Analytics sau conturi. Locația precisă e pentru navigație, nu se vinde.</p>
+    <p class="muted">Datele de rute rămân pe telefon. Harta, OSRM și Nominatim primesc coordonate sau text de căutare. Conectarea Google, Analytics și Crashlytics sunt opționale; Analytics și Crashlytics pornesc doar după alegerea ta în Setări. Locația precisă e pentru navigație, nu se vinde.</p>
 
     <h2>Changes</h2>
     <p>Material changes bump the “Last updated” date and are noted in release notes when the app is commercially distributed.</p>
