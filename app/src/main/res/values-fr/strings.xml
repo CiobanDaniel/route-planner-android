@@ -109,7 +109,7 @@
     <string name="account_title">Compte</string>
     <string name="account_menu_signed_out">Sur ce téléphone — appuie pour te connecter avec Google</string>
     <string name="account_signed_out_title">Non connecté</string>
-    <string name="account_signed_out_body">Itinéraires, arrêts et carnet restent sur ce téléphone. La connexion Google te permettra de synchroniser entre appareils et de partager avec une équipe. Ce n\'est pas encore dans cette version.</string>
+    <string name="account_signed_out_body">La connexion Google crée un compte pour cette application. Les itinéraires, arrêts et le carnet restent sur ce téléphone tant que la synchro cloud n’existe pas.</string>
     <string name="account_signed_in_title">Connecté</string>
     <string name="account_signed_in_body">Session locale uniquement. La synchro cloud n\'est pas encore branchée — exporte une sauvegarde JSON depuis Paramètres si tu as besoin d\'une copie sur un autre téléphone.</string>
     <string name="account_display_name">Nom affiché</string>
@@ -123,7 +123,7 @@
     <string name="account_google_sign_in">Continuer avec Google</string>
     <string name="account_google_sign_out">Se déconnecter de Google</string>
     <string name="account_google_body">La connexion avec un compte Google synchronisera les itinéraires entre téléphones et permettra le partage en équipe. Ce n\'est pas activé dans cette version.</string>
-    <string name="account_google_unavailable">La connexion Google n\'est pas encore dans cette version. Tes données restent sur cet appareil.</string>
+    <string name="account_google_unavailable">La connexion Google nécessite la configuration Firebase dans cette version. Tes données restent sur cet appareil.</string>
     <string name="account_google_privacy">Quand la connexion Google arrivera, Google verra le nom et l\'e-mail du compte que tu choisis. La synchro cloud est une étape séparée et n\'est pas encore active.</string>
     <string name="account_google_connecting">Connexion à Google…</string>
     <string name="account_google_failed">Impossible de se connecter avec Google. Réessaie.</string>
@@ -848,4 +848,16 @@
     <string name="settings_services_search_ok">Recherche OK</string>
     <string name="settings_services_search_fallback">Recherche OK (serveur de secours)</string>
     <string name="settings_services_search_fail">Recherche échouée</string>
+    <string name="account_google_setup_needed">La connexion Google n’est pas encore configurée dans cette version.</string>
+    <string name="account_delete">Supprimer le compte Google</string>
+    <string name="account_delete_title">Supprimer ton compte Google de Route Planner ?</string>
+    <string name="account_delete_body">Cette action supprime le compte Firebase de l’application et te déconnecte. Tes itinéraires restent sur ce téléphone car la synchro cloud n’est pas encore disponible.</string>
+    <string name="settings_diagnostics">Confidentialité et diagnostic</string>
+    <string name="settings_diagnostics_on">Les rapports facultatifs sont activés</string>
+    <string name="settings_diagnostics_off">Aucun rapport facultatif</string>
+    <string name="settings_diagnostics_hint">Ces contrôles sont désactivés par défaut. Les noms d’itinéraires, adresses, coordonnées, notes et e-mail du compte ne sont jamais envoyés comme événements analytiques.</string>
+    <string name="settings_usage_analytics">Analyses d’utilisation anonymes</string>
+    <string name="settings_usage_analytics_hint">Aide à améliorer les parcours généraux de l’application. La publicité et la personnalisation restent désactivées.</string>
+    <string name="settings_crash_reports">Rapports de crash</string>
+    <string name="settings_crash_reports_hint">Envoie des diagnostics techniques à Firebase Crashlytics lorsque Firebase est configuré.</string>
 </resources>

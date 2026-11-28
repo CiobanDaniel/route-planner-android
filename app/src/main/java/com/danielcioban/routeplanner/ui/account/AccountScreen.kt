@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,9 +39,11 @@ import com.danielcioban.routeplanner.BuildConfig
 import com.danielcioban.routeplanner.R
 import com.danielcioban.routeplanner.data.account.AccountSession
 import com.danielcioban.routeplanner.data.account.AccountSessionStore
+import com.danielcioban.routeplanner.data.account.GoogleSignInResult
 import com.danielcioban.routeplanner.data.account.isDebugDeveloper
 import com.danielcioban.routeplanner.ui.components.FloatingCircleButton
 import com.danielcioban.routeplanner.ui.components.FloatingIsland
+import com.danielcioban.routeplanner.ui.components.IslandDialog
 import com.danielcioban.routeplanner.ui.layout.AppPanes
 import com.danielcioban.routeplanner.ui.layout.readableWidth
 import com.danielcioban.routeplanner.ui.components.SoftOutlinedTextField
@@ -55,8 +58,12 @@ fun AccountScreen(
     onOpenMenu: () -> Unit = {},
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
+    val authResult by viewModel.authResult.collectAsStateWithLifecycle()
+    val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var previewName by rememberSaveable { mutableStateOf("") }
     var previewEmail by rememberSaveable { mutableStateOf("") }
+    var confirmDeleteAccount by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         RouteMapBackdrop(stops = emptyList())
@@ -129,18 +136,31 @@ fun AccountScreen(
                                 color = IslandColors.onSurfaceMuted,
                             )
                             Button(
-                                onClick = { },
-                                enabled = false,
+                                onClick = { viewModel.signInWithGoogle(context) },
+                                enabled = !busy,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                             ) {
                                 Text(stringResource(R.string.account_google_sign_in))
                             }
                             Text(
-                                text = stringResource(R.string.account_google_privacy),
+                                text = stringResource(R.string.account_identity_privacy),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = IslandColors.onSurfaceMuted,
                             )
+                            when (authResult) {
+                                GoogleSignInResult.NotConfigured -> Text(
+                                    text = stringResource(R.string.account_google_setup_needed),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                is GoogleSignInResult.Failure -> Text(
+                                    text = stringResource(R.string.account_google_failed),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                else -> Unit
+                            }
                             if (BuildConfig.DEBUG) {
                                 Text(
                                     text = stringResource(R.string.account_preview_hint),
@@ -211,7 +231,7 @@ fun AccountScreen(
                                 color = IslandColors.onSurfaceMuted,
                             )
                             Text(
-                                text = stringResource(R.string.account_signed_in_body),
+                                text = stringResource(R.string.account_cloud_sync_soon),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = IslandColors.onSurfaceMuted,
                             )
@@ -223,7 +243,8 @@ fun AccountScreen(
                                 )
                             }
                             OutlinedButton(
-                                onClick = { viewModel.signOut() },
+                                onClick = { viewModel.signOut(context) },
+                                enabled = !busy,
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
                             ) {
@@ -235,10 +256,49 @@ fun AccountScreen(
                                     },
                                 )
                             }
+                            if (current.providerId == AccountSessionStore.GOOGLE_PROVIDER) {
+                                OutlinedButton(
+                                    onClick = { confirmDeleteAccount = true },
+                                    enabled = !busy,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.account_delete_app),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                                if (authResult is GoogleSignInResult.Failure || authResult == GoogleSignInResult.RecentLoginRequired || authResult == GoogleSignInResult.NotConfigured) {
+                                    Text(
+                                        text = stringResource(if (authResult == GoogleSignInResult.RecentLoginRequired) R.string.account_delete_reauthenticate else R.string.account_delete_failed),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
+            }
+        }
+        if (confirmDeleteAccount) {
+            IslandDialog(
+                onDismissRequest = { confirmDeleteAccount = false },
+                title = stringResource(R.string.account_delete_app_title),
+                confirmLabel = stringResource(R.string.account_delete_app),
+                onConfirm = {
+                    confirmDeleteAccount = false
+                    viewModel.deleteGoogleAccount(context)
+                },
+                dismissLabel = stringResource(R.string.action_cancel),
+                onDismissButton = { confirmDeleteAccount = false },
+            ) {
+                Text(
+                    text = stringResource(R.string.account_delete_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = IslandColors.onSurfaceMuted,
+                )
             }
         }
     }

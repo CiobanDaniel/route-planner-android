@@ -74,7 +74,10 @@ fun CollapsibleBottomIsland(
             } else {
                 heightPx.animateTo(
                     targetValue = target,
-                    animationSpec = tween(220),
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                    ),
                 )
             }
         }

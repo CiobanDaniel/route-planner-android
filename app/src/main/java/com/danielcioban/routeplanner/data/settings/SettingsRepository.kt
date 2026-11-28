@@ -98,6 +98,9 @@ data class AppSettings(
     val lastBackupEpochMs: Long = 0L,
     val backupFolderUri: String = "",
     val tripRetentionDays: Int = 0,
+    /** Both are off until the person using the app makes an explicit choice. */
+    val usageAnalyticsEnabled: Boolean = false,
+    val crashReportsEnabled: Boolean = false,
 ) {
     val hasHome: Boolean
         get() = homeLatitude != null && homeLongitude != null
@@ -160,6 +163,8 @@ class SettingsRepository(private val context: Context) {
         val lastBackupEpochMs = longPreferencesKey("last_backup_epoch_ms")
         val backupFolderUri = stringPreferencesKey("backup_folder_uri")
         val tripRetentionDays = intPreferencesKey("trip_retention_days")
+        val usageAnalyticsEnabled = booleanPreferencesKey("usage_analytics_enabled")
+        val crashReportsEnabled = booleanPreferencesKey("crash_reports_enabled")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -221,6 +226,8 @@ class SettingsRepository(private val context: Context) {
             lastBackupEpochMs = prefs[Keys.lastBackupEpochMs] ?: 0L,
             backupFolderUri = prefs[Keys.backupFolderUri].orEmpty(),
             tripRetentionDays = prefs[Keys.tripRetentionDays] ?: 0,
+            usageAnalyticsEnabled = prefs[Keys.usageAnalyticsEnabled] ?: false,
+            crashReportsEnabled = prefs[Keys.crashReportsEnabled] ?: false,
         )
     }
 
@@ -404,5 +411,13 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setTripRetentionDays(days: Int) {
         context.dataStore.edit { it[Keys.tripRetentionDays] = days.coerceAtLeast(0) }
+    }
+
+    suspend fun setUsageAnalyticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.usageAnalyticsEnabled] = enabled }
+    }
+
+    suspend fun setCrashReportsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.crashReportsEnabled] = enabled }
     }
 }

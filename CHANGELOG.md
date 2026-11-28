@@ -7,7 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Firebase-ready Google account sign-in through Credential Manager; accounts remain identity-only
+  while route sync is deliberately local-first. Account deletion is available in-app.
+- Privacy-first optional Firebase Analytics and Crashlytics controls. Both collection switches are
+  off by default; telemetry excludes route and account content.
+
 ### Fixed
+- Jumping ahead without GPS leaves earlier stops unchanged; incomplete automatic backups are cleaned up when the storage provider allows it.
+- Dialog animations honor Reduce motion, and Romanian plural and locale-aware resource handling are improved.
+- Automatic backup keeps earlier copies when a new write fails; replacing a trip preserves its progress in history, and a blocked jump no longer partially completes earlier stops.
+- Account deletion explains failures and uses labels that distinguish the app account from the user's Google account.
 - Queue **Skip current** moves the stop later (same as HUD Skip) instead of opening failed-delivery
 - Skip later retargets in-app navigation and the background trip when the next stop changes
 - Jump ahead without a GPS fix no longer starts a trip; Retry / GPS return keep the jumped stop

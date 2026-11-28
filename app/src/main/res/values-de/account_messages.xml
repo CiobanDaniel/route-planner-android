@@ -1,0 +1,7 @@
+<resources>
+    <string name="account_delete_app">Route Planner-Konto löschen</string>
+    <string name="account_delete_app_title">Dein Route Planner-Konto löschen?</string>
+    <string name="account_identity_privacy">Google stellt für die Anmeldung deinen Namen und deine E-Mail bereit. Routen bleiben auf diesem Telefon; Cloud-Sync ist noch nicht verfügbar.</string>
+    <string name="account_delete_reauthenticate">Melde dich ab und erneut an und versuche dann, dein Route Planner-Konto zu löschen.</string>
+    <string name="account_delete_failed">Das Route Planner-Konto konnte nicht gelöscht werden. Prüfe deine Verbindung und versuche es erneut.</string>
+</resources>

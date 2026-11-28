@@ -23,7 +23,11 @@ private val ListItemShape = RoundedCornerShape(16.dp)
 
 @Composable
 private fun listItemBorderColor(selected: Boolean) =
-    if (selected) IslandColors.fieldBorderFocused else IslandColors.fieldBorder.copy(alpha = 0.7f)
+    if (selected) IslandColors.fieldBorderFocused else androidx.compose.ui.graphics.Color.Transparent
+
+@Composable
+private fun listItemBackgroundColor(selected: Boolean) =
+    if (selected) IslandColors.rowSurface.copy(alpha = 0.5f) else androidx.compose.ui.graphics.Color.Transparent
 
 /** Inset row so list items read as separate objects on an island. */
 @Composable
@@ -38,7 +42,7 @@ fun IslandListItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(ListItemShape)
-            .background(IslandColors.rowSurface)
+            .background(listItemBackgroundColor(selected))
             .border(width = 1.dp, color = listItemBorderColor(selected), shape = ListItemShape)
             .then(
                 if (onClick != null) {
@@ -66,7 +70,7 @@ fun IslandListItemColumn(
         modifier = modifier
             .fillMaxWidth()
             .clip(ListItemShape)
-            .background(IslandColors.rowSurface)
+            .background(listItemBackgroundColor(selected))
             .border(width = 1.dp, color = listItemBorderColor(selected), shape = ListItemShape)
             .then(
                 if (onClick != null) {

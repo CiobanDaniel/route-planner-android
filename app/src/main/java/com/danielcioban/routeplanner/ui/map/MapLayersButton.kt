@@ -86,7 +86,7 @@ fun MapLayersMenuDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("map_layers_menu")
-                .background(IslandColors.scrim.copy(alpha = 0.22f))
+                .background(IslandColors.scrim)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(16.dp)
@@ -141,11 +141,6 @@ fun MapLayersMenuDialog(
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium,
                                     color = IslandColors.onSurface,
-                                )
-                                Text(
-                                    text = stringResource(mode.descriptionRes),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = IslandColors.onSurfaceMuted,
                                 )
                             }
                             if (mode == selected) {

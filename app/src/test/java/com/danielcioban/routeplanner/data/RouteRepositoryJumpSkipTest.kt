@@ -82,7 +82,7 @@ class RouteRepositoryJumpSkipTest {
 
     @Test
     fun jumpMarkPreviousDone_blockedByRequiredTask() = runTest {
-        repository.addStopTask(stopA, "Collect signature", required = true)
+        repository.addStopTask(stopB, "Collect signature", required = true)
         val result = repository.completeStopsBefore(routeId, stopC)
         assertTrue(result is StopCompletionResult.BlockedByRequiredTasks)
         assertFalse(db.routeDao().getStop(stopA)!!.isCompleted)
@@ -96,5 +96,16 @@ class RouteRepositoryJumpSkipTest {
             StopCompletionResult.StopMissing,
             repository.completeStopsBefore(routeId, 9_999L),
         )
+    }
+
+    @Test
+    fun replacingRouteTripRecordsCurrentProgress() = runTest {
+        val tripId = repository.startRouteTrip(routeId, "Trip", 3)
+        repository.setStopCompleted(stopA, true)
+        repository.cancelTripWithCurrentProgress(tripId, routeId)
+        val trip = repository.getTrip(tripId)!!
+        assertEquals(1, trip.stopsCompleted)
+        assertEquals(3, trip.stopsTotal)
+        assertEquals(com.danielcioban.routeplanner.data.local.TripStatus.CANCELLED, trip.status)
     }
 }

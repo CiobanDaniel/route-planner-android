@@ -1,7 +1,7 @@
 # Development status & agent continuity log
 
 **Purpose:** Survive context resets. Read this **before** changing map heading, floating UI chrome, Room schema, or delivery flow.
-**Last updated:** 2026-08-25
+**Last updated:** 2026-11-25
 **Branch context:** `feature/courier-street-contrast` — **0.5.0** local cut. Play Console listing, hosted privacy URL, and production OSRM/Nominatim still need your accounts.
 
 **Implementation decision (2026-08-05):** This Kotlin/Android repository is the active product implementation. The Expo/React Native repository is retained only as an earlier prototype/reference and must not receive parallel feature work.
@@ -33,7 +33,7 @@ Related docs: `AGENTS.md`, `CHANGELOG.md`, [`docs/README.md`](README.md) (what b
 | Stop library (device-local) | Done — canonical stops; routes reference `libraryStopId` |
 | Per-stop task checklists (local) | Done |
 | Kotlin/Android client | Active implementation |
-| Accounts / cloud sync / share library | Groundwork (session store, remoteId, JSON backup v6); Google/Auth TBD. Account UI already has Google sign-in strings (disabled). Debug-only developer tools (joystick GPS sim) |
+| Accounts / cloud sync / share library | Firebase Google sign-in + in-app account deletion + opt-in telemetry done; routes stay local. Cloud sync/team sharing TBD. |
 | Play signing / Crashlytics | Repo-ready: `keystore.properties` signs release; Crashlytics if `google-services.json` is present (no Analytics/Auth). Play Vitals need no Firebase. Listing files in `docs/play/` (PNG graphic, IARC sheet, tester runbook) — Console clicks still you |
 | Privacy policy URL (in-app) | Done — About + Settings. Default GitHub draft; override `privacy.policy.url`. Host `docs/privacy/index.html` on Pages; counsel before collecting emails |
 | Routing / geocoding bases | Done — `local.properties` + optional fallback. Romania Docker pack in `deploy/routing/`. Public demos remain Gradle defaults until you set URLs. |
@@ -255,7 +255,7 @@ The P0–P8 lists under this heading are a **fossil** of 0.3–0.4 (PR #20, etc.
 
 ### P4 — Accounts & sharing (after local groundwork feels solid)
 
-- [ ] Auth (e.g. Entra / Firebase / custom) — product decision TBD.
+- [x] Firebase Google Auth identity and account deletion; no cloud route sync.
 - [x] Account session store + Account screen (preview sign-in on debug builds; metadata only, no tokens).
 - [x] Stable `remoteId` on routes/stops/library/tasks (Room v4) + `deletedAtEpochMs` tombstone column.
 - [x] JSON backup export/import in Settings (merge by `remoteId`; rehearsal for sync payloads). Format v2 includes trip history.
@@ -389,6 +389,31 @@ Run after any change to `map.html`, bearing, or map chrome:
 
 ## Session / change log
 
+### 2026-11-25 — GPS, backup, motion and localization follow-up
+
+- Jump-ahead checks for a GPS fix before marking earlier stops; without a fix it shows the existing waiting-GPS notice and leaves progress unchanged.
+- Failed auto-backups attempt to remove only the new incomplete file; older backups are never removed. Storage providers can refuse deletion.
+- Island dialogs honor Reduce motion and wait for the actual exit transition. Map/heading logic was not changed.
+- Romanian plural forms and Compose locale-aware resource lookups addressed after lint review.
+
+### 2026-11-25 — Review fixes
+
+- Automatic backups write a new, verified file and preserve earlier copies; users may remove old copies from their chosen folder.
+- Replacing a trip preserves its route progress in history; jump-ahead validates all required tasks in one database transaction before completing stops.
+- Account deletion errors are visible, including a reauthentication instruction, and deletion labels explicitly identify the Route Planner account.
+- The uncommitted upright compass-axis change still requires a physical phone test; no sensor behavior was changed during this review fix.
+
+### 2026-10-13 — Firebase / Play account foundations
+
+- Added Firebase-ready Google sign-in through Credential Manager and Firebase Auth. It remains
+  identity-only: no routes, stops, or tasks are synced remotely.
+- Added Account → Delete Google account, plus optional Analytics and Crashlytics controls that
+  default to off. Telemetry is isolated in `data/telemetry` and must never receive route content,
+  coordinates, notes, e-mail, or account IDs.
+- `app/google-services.json` remains ignored; no-config clones compile and show a clear setup
+  message. See `docs/GOOGLE_SERVICES.md` for the required Firebase Console/SHA/privacy steps.
+- `:app:assembleDebug` passed with JDK 21 without `google-services.json`.
+
 ### 2026-08-25 — Docs hygiene + gitignore
 
 - Added `docs/README.md`: which planning files belong on GitHub `main` vs stay on this PC. `DEV_STATUS` / backlog / ADRs / Play templates stay in git; captured screenshot PNGs, `testers.csv`, routing extracts, and secrets stay local.
@@ -410,7 +435,7 @@ Run after any change to `map.html`, bearing, or map chrome:
 ### 2026-08-25 — Languages: FR, DE, IT, ES, PT + Google-ready copy
 
 - Settings language picker: English, Romanian, French, German, Italian, Spanish, Portuguese. `AppLanguage.fromTag` uses the primary subtag (`pt-BR` → Portuguese). `res/xml/locales_config.xml` + `android:localeConfig` for Android 13+ system per-app language.
-- Full `strings.xml` for each locale (same keys as English). EN/RO account copy expanded; Google sign-in / privacy / unlink strings are in every locale. Account screen shows a **disabled** Continue with Google button — no Google Auth SDK, no tokens.
+- Full `strings.xml` for each locale (same keys as English). Account strings are in every locale. The earlier disabled Google button was replaced on 2026-10-13 by Firebase Auth + Credential Manager; no cloud route data or tokens are stored in DataStore.
 - `:app:compileDebugKotlin` and `:app:testDebugUnitTest` green. Did **not** commit, start Bucket 12, or change overlay-safe menus / heading math.
 
 ### 2026-08-25 — Settings accordion + dropdowns

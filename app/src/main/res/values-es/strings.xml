@@ -109,7 +109,7 @@
     <string name="account_title">Cuenta</string>
     <string name="account_menu_signed_out">En este teléfono — toca para iniciar sesión con Google</string>
     <string name="account_signed_out_title">Sin iniciar sesión</string>
-    <string name="account_signed_out_body">Las rutas, las paradas y la biblioteca se quedan en este teléfono. El inicio de sesión con Google permitirá sincronizar entre dispositivos y compartir con un equipo. Aún no está en esta versión.</string>
+    <string name="account_signed_out_body">El inicio de sesión con Google crea una cuenta para esta app. Las rutas, paradas y la biblioteca se quedan en este teléfono hasta que exista la sincronización en la nube.</string>
     <string name="account_signed_in_title">Sesión iniciada</string>
     <string name="account_signed_in_body">Esto es solo una sesión local. La sincronización en la nube aún no está conectada — exporta una copia JSON desde Ajustes si necesitas llevarla a otro teléfono.</string>
     <string name="account_display_name">Nombre visible</string>
@@ -123,7 +123,7 @@
     <string name="account_google_sign_in">Continuar con Google</string>
     <string name="account_google_sign_out">Cerrar sesión de Google</string>
     <string name="account_google_body">El inicio de sesión con cuenta de Google sincronizará las rutas entre teléfonos y permitirá compartir con un equipo. No está activado en esta versión.</string>
-    <string name="account_google_unavailable">El inicio de sesión con Google aún no está en esta versión. Tus datos se quedan en este dispositivo.</string>
+    <string name="account_google_unavailable">El inicio de sesión con Google necesita configuración de Firebase en esta versión. Tus datos se quedan en este dispositivo.</string>
     <string name="account_google_privacy">Cuando llegue el inicio de sesión con Google, Google verá el nombre y el correo de la cuenta que elijas. La sincronización en la nube es un paso aparte y aún no está activa.</string>
     <string name="account_google_connecting">Conectando con Google…</string>
     <string name="account_google_failed">No se ha podido iniciar sesión con Google. Inténtalo de nuevo.</string>
@@ -848,4 +848,16 @@
     <string name="settings_services_search_ok">Búsqueda OK</string>
     <string name="settings_services_search_fallback">Búsqueda OK (servidor de reserva)</string>
     <string name="settings_services_search_fail">Búsqueda fallida</string>
+    <string name="account_google_setup_needed">El inicio de sesión con Google aún no está configurado en esta versión.</string>
+    <string name="account_delete">Eliminar cuenta de Google</string>
+    <string name="account_delete_title">¿Eliminar tu cuenta de Google de Route Planner?</string>
+    <string name="account_delete_body">Esto elimina la cuenta de Firebase de la aplicación y cierra tu sesión. Tus rutas siguen en este teléfono porque la sincronización en la nube aún no está disponible.</string>
+    <string name="settings_diagnostics">Privacidad y diagnósticos</string>
+    <string name="settings_diagnostics_on">Los informes opcionales están activados</string>
+    <string name="settings_diagnostics_off">Sin informes opcionales</string>
+    <string name="settings_diagnostics_hint">Estos controles están desactivados de forma predeterminada. Los nombres de rutas, direcciones, coordenadas, notas y el correo de la cuenta nunca se envían como eventos analíticos.</string>
+    <string name="settings_usage_analytics">Analítica de uso anónima</string>
+    <string name="settings_usage_analytics_hint">Ayuda a mejorar los flujos generales de la app. La publicidad y la personalización siguen desactivadas.</string>
+    <string name="settings_crash_reports">Informes de fallos</string>
+    <string name="settings_crash_reports_hint">Envía diagnósticos técnicos de fallos a Firebase Crashlytics cuando Firebase está configurado.</string>
 </resources>

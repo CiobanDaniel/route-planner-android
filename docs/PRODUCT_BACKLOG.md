@@ -5,7 +5,7 @@ Status: `[x]` done in the tree, `[ ]` still open, `[-]` skipped / later / needs 
 
 Related: [`DEV_STATUS.md`](DEV_STATUS.md) (protected behaviors + session log), [`CHANGELOG.md`](../CHANGELOG.md), [`README.md`](README.md) (what belongs on GitHub vs this PC).
 
-**Current cut:** local **0.5.0** (`versionCode` 6). Data stays on-device. Do not treat `remoteId` as cloud.
+**Current cut:** local **0.5.0** (`versionCode` 6). Data stays on-device. Google sign-in is identity-only; do not treat `remoteId` as cloud.
 
 ---
 
@@ -48,7 +48,7 @@ Local courier loop on device:
 - [x] **OSRM 429 / timeout** vs generic failure; honest straight-line banner + Retry
 - [x] Road-aware optimize (OSRM table, ≤ 20 remaining pinned; haversine fallback)
 - [x] **R8 minify** on release + keep rules for WebView JS bridge and Room entities
-- [ ] Commit/tag **0.5.0** — only when you ask
+- [x] Commit/tag **0.5.0**
 
 ---
 
@@ -244,12 +244,13 @@ Repo pack is in tree. **You** still enable GitHub Pages, run counsel, and **clic
 
 ---
 
-## Bucket 12 — Cloud / accounts (later)
+## Bucket 12 — Cloud / accounts
 
-- [ ] Auth (Google / Entra / magic link)
+- [x] Firebase Google Auth identity, in-app account deletion, and opt-in diagnostics (no cloud route data)
 - [ ] Sync library + routes; conflict UI better than LWW
 - [ ] Share a route or stop (read vs edit)
 - [ ] Team library
 - [ ] Live dispatcher map
 
-Do **not** start until buckets 1–2 and backup round-trip feel boringly reliable. That is when `remoteId` starts meaning cloud.
+Do **not** start sync until backup round-trip feels boringly reliable and server-side access rules,
+deletion, retention, and team permissions are designed. That is when `remoteId` starts meaning cloud.

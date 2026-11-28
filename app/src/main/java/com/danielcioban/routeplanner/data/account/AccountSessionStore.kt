@@ -20,16 +20,19 @@ class AccountSessionStore(private val context: Context) {
         val displayName = stringPreferencesKey("display_name")
         val email = stringPreferencesKey("email")
         val providerId = stringPreferencesKey("provider_id")
+        val userId = stringPreferencesKey("user_id")
     }
 
     val session: Flow<AccountSession> = context.accountDataStore.data.map { prefs ->
         val email = prefs[Keys.email].orEmpty()
+        val userId = prefs[Keys.userId].orEmpty()
         val provider = prefs[Keys.providerId].orEmpty().ifBlank { PREVIEW_PROVIDER }
-        if (email.isBlank()) {
+        if (email.isBlank() && userId.isBlank()) {
             AccountSession.SignedOut
         } else {
             AccountSession.SignedIn(
-                displayName = prefs[Keys.displayName].orEmpty().ifBlank { email },
+                userId = userId,
+                displayName = prefs[Keys.displayName].orEmpty().ifBlank { email.ifBlank { "Google account" } },
                 email = email,
                 providerId = provider,
             )
@@ -40,6 +43,7 @@ class AccountSessionStore(private val context: Context) {
         val trimmedEmail = email.trim()
         require(trimmedEmail.isNotEmpty()) { "Email required" }
         context.accountDataStore.edit {
+            it.remove(Keys.userId)
             it[Keys.displayName] = displayName.trim()
             it[Keys.email] = trimmedEmail
             it[Keys.providerId] = PREVIEW_PROVIDER
@@ -48,6 +52,7 @@ class AccountSessionStore(private val context: Context) {
 
     suspend fun signInDeveloper() {
         context.accountDataStore.edit {
+            it.remove(Keys.userId)
             it[Keys.displayName] = "Developer"
             it[Keys.email] = "dev@local"
             it[Keys.providerId] = DEVELOPER_PROVIDER
@@ -58,10 +63,27 @@ class AccountSessionStore(private val context: Context) {
         context.accountDataStore.edit { it.clear() }
     }
 
+    suspend fun saveFirebaseSession(userId: String, displayName: String?, email: String?) {
+        val safeEmail = email.orEmpty().trim()
+        require(userId.isNotBlank()) { "Firebase user id required" }
+        context.accountDataStore.edit {
+            it[Keys.userId] = userId
+            it[Keys.displayName] = displayName.orEmpty().trim().ifBlank { safeEmail }
+            it[Keys.email] = safeEmail
+            it[Keys.providerId] = GOOGLE_PROVIDER
+        }
+    }
+
+    /** Does not erase a local preview/developer session when Firebase is unavailable. */
+    suspend fun clearFirebaseSession() {
+        context.accountDataStore.edit { prefs ->
+            if (prefs[Keys.providerId] == GOOGLE_PROVIDER) prefs.clear()
+        }
+    }
+
     companion object {
         const val DEVELOPER_PROVIDER = "developer"
         const val PREVIEW_PROVIDER = "preview"
-        /** Reserved for Google Sign-In when Bucket 12 lands. Not used in this build. */
         const val GOOGLE_PROVIDER = "google"
     }
 }

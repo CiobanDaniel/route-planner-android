@@ -578,18 +578,22 @@ class RouteRepository(
      * Mark unfinished delivery stops before [targetStopId] complete (jump-ahead).
      * Required-task gate still applies. Does not complete the target itself.
      */
-    suspend fun completeStopsBefore(routeId: Long, targetStopId: Long): StopCompletionResult {
+    suspend fun completeStopsBefore(routeId: Long, targetStopId: Long): StopCompletionResult = db.withTransaction {
         val stops = getRoute(routeId)?.deliveryStops.orEmpty()
-        if (stops.none { it.id == targetStopId }) return StopCompletionResult.StopMissing
-        for (stop in stops) {
-            if (stop.id == targetStopId) return StopCompletionResult.Updated
-            if (stop.isCompleted) continue
+        val targetIndex = stops.indexOfFirst { it.id == targetStopId }
+        if (targetIndex < 0) return@withTransaction StopCompletionResult.StopMissing
+        val pending = stops.take(targetIndex).filterNot { it.isCompleted }
+        for (stop in pending) {
+            val count = taskDao.incompleteRequiredCount(stop.id)
+            if (count > 0 && !stop.isBreak) return@withTransaction StopCompletionResult.BlockedByRequiredTasks(count)
+        }
+        for (stop in pending) {
             when (val result = setStopCompleted(stop.id, true)) {
                 StopCompletionResult.Updated -> Unit
-                else -> return result
+                else -> error("Stop changed during jump: $result")
             }
         }
-        return StopCompletionResult.Updated
+        StopCompletionResult.Updated
     }
 
     suspend fun markStopVisited(stopId: Long) {
@@ -1627,6 +1631,18 @@ class RouteRepository(
                 stopsCompleted = stopsCompleted.coerceAtLeast(0),
                 stopsTotal = stopsTotal.coerceAtLeast(1),
             ),
+        )
+    }
+
+    /** Cancel using the live route counts, or the last recorded progress if the route is gone. */
+    suspend fun cancelTripWithCurrentProgress(tripId: Long, routeId: Long?) {
+        val trip = tripHistoryDao.getById(tripId) ?: return
+        val route = routeId?.let { getRoute(it) }
+        finishTrip(
+            tripId, TripStatus.CANCELLED,
+            route?.completedCount ?: trip.stopsCompleted,
+            route?.deliveryStops?.size ?: trip.stopsTotal,
+            trip.distanceMeters, trip.lateStops,
         )
     }
 

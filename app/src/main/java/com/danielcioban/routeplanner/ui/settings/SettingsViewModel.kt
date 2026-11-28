@@ -207,6 +207,14 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setHighContrastPins(enabled) }
     }
 
+    fun setUsageAnalyticsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setUsageAnalyticsEnabled(enabled) }
+    }
+
+    fun setCrashReportsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setCrashReportsEnabled(enabled) }
+    }
+
     fun setHome(latitude: Double, longitude: Double, name: String) {
         viewModelScope.launch { settingsRepository.setHome(latitude, longitude, name) }
     }

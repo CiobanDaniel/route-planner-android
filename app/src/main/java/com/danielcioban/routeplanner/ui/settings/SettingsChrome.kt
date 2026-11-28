@@ -34,6 +34,7 @@ enum class SettingsGroupId {
     Home,
     Vehicle,
     Services,
+    Diagnostics,
     Arrive,
     Data,
     Templates,

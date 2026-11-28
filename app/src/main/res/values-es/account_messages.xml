@@ -1,0 +1,7 @@
+<resources>
+    <string name="account_delete_app">Eliminar cuenta de Route Planner</string>
+    <string name="account_delete_app_title">¿Eliminar tu cuenta de Route Planner?</string>
+    <string name="account_identity_privacy">Google proporciona tu nombre y correo para iniciar sesión. Las rutas permanecen en este teléfono; la sincronización en la nube aún no está disponible.</string>
+    <string name="account_delete_reauthenticate">Cierra sesión, vuelve a iniciarla y vuelve a intentar eliminar tu cuenta de Route Planner.</string>
+    <string name="account_delete_failed">No se pudo eliminar tu cuenta de Route Planner. Comprueba tu conexión y vuelve a intentarlo.</string>
+</resources>

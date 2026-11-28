@@ -7,6 +7,7 @@ sealed interface AccountSession {
     data object SignedOut : AccountSession
 
     data class SignedIn(
+        val userId: String = "",
         val displayName: String,
         val email: String,
         /** Provider slug, e.g. `preview`, `developer`, `google`. */

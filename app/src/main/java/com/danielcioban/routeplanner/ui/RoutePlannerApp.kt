@@ -5,6 +5,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -77,11 +84,13 @@ fun RoutePlannerApp(
     settings: AppSettings = AppSettings(),
 ) {
     val context = LocalContext.current
+    val localizedResources = LocalResources.current
     val app = remember { context.applicationContext as RoutePlannerApplication }
     val repository = remember { app.repository }
     val settingsRepository = remember { app.settingsRepository }
     val deliverySessionStore = remember { app.deliverySessionStore }
     val accountSessionStore = remember { app.accountSessionStore }
+    val accountAuthenticator = remember { app.accountAuthenticator }
     val scope = rememberCoroutineScope()
     val persistMapStyle: (MapViewMode) -> Unit = { mode ->
         scope.launch { settingsRepository.setPreferredMapStyle(mode) }
@@ -102,6 +111,24 @@ fun RoutePlannerApp(
     var pendingReplaceDrive by remember { mutableStateOf<Pair<DriveHereTarget, Boolean>?>(null) }
     val navEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navEntry?.destination?.route
+    LaunchedEffect(currentRoute) {
+        val screen = when (currentRoute) {
+            AppDestinations.ROUTE_LIST -> "route_list"
+            AppDestinations.ROUTE_DETAIL -> "route_detail"
+            AppDestinations.ROUTE_EDIT -> "route_edit"
+            AppDestinations.SETTINGS -> "settings"
+            AppDestinations.ACCOUNT -> "account"
+            AppDestinations.ABOUT -> "about"
+            AppDestinations.STOP_LIBRARY -> "stop_library"
+            AppDestinations.QUICK_DRIVE -> "quick_drive"
+            AppDestinations.TRIP_HISTORY -> "trip_history"
+            AppDestinations.TRIP_STATS -> "trip_stats"
+            AppDestinations.FUEL_LOG -> "fuel_log"
+            AppDestinations.TRASH -> "trash"
+            else -> "other"
+        }
+        app.telemetry.screenViewed(screen)
+    }
     val appVersion = remember {
         runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -195,7 +222,7 @@ fun RoutePlannerApp(
                 startDriveHere(
                     DriveHereTarget(
                         name = settings.homeName.ifBlank {
-                            context.getString(R.string.drive_home)
+                            localizedResources.getString(R.string.drive_home)
                         },
                         latitude = lat,
                         longitude = lng,
@@ -260,6 +287,24 @@ fun RoutePlannerApp(
             navController = navController,
             startDestination = AppDestinations.ROUTE_LIST,
             modifier = Modifier.fillMaxSize(),
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth / 4 },
+                    animationSpec = tween(220)
+                ) + fadeIn(tween(220))
+            },
+            exitTransition = {
+                fadeOut(tween(180))
+            },
+            popEnterTransition = {
+                fadeIn(tween(220))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> fullWidth / 4 },
+                    animationSpec = tween(220)
+                ) + fadeOut(tween(220))
+            }
         ) {
             composable(AppDestinations.ROUTE_LIST) {
                 val viewModel: RouteListViewModel = viewModel(
@@ -312,7 +357,7 @@ fun RoutePlannerApp(
                             startDriveHere(
                                 DriveHereTarget(
                                     name = settings.homeName.ifBlank {
-                                        context.getString(R.string.drive_home)
+                                        localizedResources.getString(R.string.drive_home)
                                     },
                                     latitude = lat,
                                     longitude = lng,
@@ -411,7 +456,7 @@ fun RoutePlannerApp(
 
             composable(AppDestinations.ACCOUNT) {
                 val viewModel: AccountViewModel = viewModel(
-                    factory = AccountViewModel.Factory(accountSessionStore),
+                    factory = AccountViewModel.Factory(accountSessionStore, accountAuthenticator),
                 )
                 AccountScreen(
                     viewModel = viewModel,
@@ -537,7 +582,7 @@ fun RoutePlannerApp(
             onStats = { navController.navigate(AppDestinations.TRIP_STATS) },
             onFuelLog = { navController.navigate(AppDestinations.FUEL_LOG) },
             onAccount = { navController.navigate(AppDestinations.ACCOUNT) },
-            onLogout = { scope.launch { accountSessionStore.signOut() } },
+            onLogout = { scope.launch { accountAuthenticator.signOut(context) } },
         )
 
         if (showFgsExplain) {
@@ -577,8 +622,7 @@ fun RoutePlannerApp(
                     scope.launch {
                         val session = deliverySessionStore.session.first()
                         session.tripHistoryId?.let { tripId ->
-                            val completed = if (session.kind == DriveKind.QUICK) 0 else 0
-                            repository.finishTrip(tripId, TripStatus.CANCELLED, completed, 1)
+                            repository.cancelTripWithCurrentProgress(tripId, session.activeRouteId)
                         }
                         deliverySessionStore.clear()
                         launchQuickDrive(target, saveToLibrary)

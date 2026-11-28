@@ -613,6 +613,15 @@ class RouteDetailViewModel(
         val target = stops.firstOrNull { it.id == stopId } ?: return
         if (target.isCompleted) return
         viewModelScope.launch {
+            val fix = userLocation ?: lastUserFix
+            if (fix == null) {
+                _noticeMessageRes.value = R.string.nav_error_waiting_gps
+                return@launch
+            }
+            if (target.latitude == null || target.longitude == null) {
+                _noticeMessageRes.value = R.string.nav_error_no_pin
+                return@launch
+            }
             if (markPreviousDone) {
                 when (repository.completeStopsBefore(routeId, target.id)) {
                     StopCompletionResult.Updated -> syncTripProgress()
@@ -623,16 +632,7 @@ class RouteDetailViewModel(
                     StopCompletionResult.StopMissing -> return@launch
                 }
             }
-            val fix = userLocation ?: lastUserFix
-            if (fix != null) {
-                startNavigationToStop(target, fix)
-            } else {
-                _navigation.value = NavigationUiState(
-                    phase = NavigationPhase.Error,
-                    targetStopId = target.id,
-                    errorMessageRes = R.string.nav_error_waiting_gps,
-                )
-            }
+            startNavigationToStop(target, fix)
         }
     }
 

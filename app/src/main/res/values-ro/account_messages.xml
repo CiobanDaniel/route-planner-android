@@ -1,0 +1,7 @@
+<resources>
+    <string name="account_delete_app">Șterge contul Route Planner</string>
+    <string name="account_delete_app_title">Ștergi contul Route Planner?</string>
+    <string name="account_identity_privacy">Google furnizează numele și emailul pentru autentificare. Rutele rămân pe telefon; sincronizarea cloud nu este încă disponibilă.</string>
+    <string name="account_delete_reauthenticate">Deconectează-te, autentifică-te din nou și încearcă din nou să ștergi contul Route Planner.</string>
+    <string name="account_delete_failed">Nu s-a putut șterge contul Route Planner. Verifică conexiunea și încearcă din nou.</string>
+</resources>

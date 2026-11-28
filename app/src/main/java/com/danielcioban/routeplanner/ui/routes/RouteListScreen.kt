@@ -1,6 +1,7 @@
 package com.danielcioban.routeplanner.ui.routes
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -205,22 +206,38 @@ fun RouteListScreen(
         ) {
             val twoPane = AppPanes.isWide(maxWidth)
             Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+            FloatingIsland(
+                modifier = Modifier.fillMaxWidth().widthIn(max = AppPanes.TitleMaxWidth),
+                shape = RoundedCornerShape(28.dp),
+                contentPadding = 8.dp,
             ) {
-                FloatingIsland(
-                    modifier = Modifier
-                        .weight(1f)
-                        .widthIn(max = AppPanes.TitleMaxWidth),
-                    shape = RoundedCornerShape(22.dp),
-                    contentPadding = 16.dp,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    androidx.compose.material3.IconButton(
+                        onClick = {
+                            chrome.dismissLayersMenu()
+                            onOpenMenu()
+                        },
+                    ) {
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_open), tint = IslandColors.onSurface)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                            .clickable(
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null,
+                                onClick = { showAddressSearch = true }
+                            ),
+                        verticalArrangement = Arrangement.Center
+                    ) {
                         Text(
                             text = stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                             color = IslandColors.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -234,54 +251,15 @@ fun RouteListScreen(
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = IslandColors.onSurfaceMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                FloatingCircleButton(
-                    onClick = {
-                        chrome.dismissLayersMenu()
-                        onOpenMenu()
-                    },
-                ) {
-                    Icon(
-                        Icons.Default.Menu,
-                        contentDescription = stringResource(R.string.menu_open),
-                        tint = IslandColors.onSurface,
-                    )
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                MapLayersButton(
-                    onClick = chrome::openLayersMenu,
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                FloatingCircleButton(
-                    onClick = {
-                        showAddressSearch = true
-                    },
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = stringResource(R.string.cd_search_place),
-                        tint = IslandColors.onSurface,
-                    )
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                FloatingCircleButton(
-                    onClick = {
-                        if (!userLocation.hasPermission) {
-                            userLocation.requestPermission()
-                        } else {
-                            userLocation.refresh()
-                            chrome.bumpRecenter()
-                        }
-                    },
-                ) {
-                    Icon(
-                        Icons.Default.MyLocation,
-                        contentDescription = stringResource(R.string.cd_my_location),
-                        tint = IslandColors.onSurface,
-                    )
+                    androidx.compose.material3.IconButton(
+                        onClick = { showAddressSearch = true },
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search_place), tint = IslandColors.onSurface)
+                    }
                 }
             }
 
@@ -303,6 +281,27 @@ fun RouteListScreen(
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    MapLayersButton(onClick = chrome::openLayersMenu)
+                    FloatingCircleButton(
+                        onClick = {
+                            if (!userLocation.hasPermission) {
+                                userLocation.requestPermission()
+                            } else {
+                                userLocation.refresh()
+                                chrome.bumpRecenter()
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.cd_my_location), tint = IslandColors.onSurface)
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .align(if (twoPane) Alignment.CenterEnd else Alignment.BottomCenter)

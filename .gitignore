@@ -70,9 +70,11 @@ firebase-debug.*.log
 .env
 .env.*
 
-# Backups if someone saves them in the repo root
+# Route Planner backups, wherever they are saved in the repository
 *.rpenc
-/*.rpbackup.json
+*.rpbackup.json
+route-planner-backup*.json
+route-planner-auto*.json
 
 # Real Play tester emails (template stays in git)
 docs/play/testers.csv

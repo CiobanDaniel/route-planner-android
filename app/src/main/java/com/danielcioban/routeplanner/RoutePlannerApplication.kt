@@ -9,11 +9,13 @@ import com.danielcioban.routeplanner.data.RouteRepository
 import com.danielcioban.routeplanner.data.backup.AutoBackup
 import com.danielcioban.routeplanner.data.account.AccountSession
 import com.danielcioban.routeplanner.data.account.AccountSessionStore
+import com.danielcioban.routeplanner.data.account.FirebaseAccountAuthenticator
 import com.danielcioban.routeplanner.data.delivery.DeliverySessionStore
 import com.danielcioban.routeplanner.data.local.AppDatabase
 import com.danielcioban.routeplanner.data.routing.LastRoutingErrorStore
 import com.danielcioban.routeplanner.data.settings.AppSettings
 import com.danielcioban.routeplanner.data.settings.SettingsRepository
+import com.danielcioban.routeplanner.data.telemetry.AppTelemetry
 import com.danielcioban.routeplanner.ui.location.hasLocationPermission
 import com.danielcioban.routeplanner.ui.shortcuts.AppShortcuts
 import com.danielcioban.routeplanner.ui.trip.TripGuidanceService
@@ -36,6 +38,10 @@ class RoutePlannerApplication : Application() {
         private set
     lateinit var accountSessionStore: AccountSessionStore
         private set
+    lateinit var accountAuthenticator: FirebaseAccountAuthenticator
+        private set
+    lateinit var telemetry: AppTelemetry
+        private set
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -51,6 +57,9 @@ class RoutePlannerApplication : Application() {
         settingsRepository = SettingsRepository(this)
         deliverySessionStore = DeliverySessionStore(this)
         accountSessionStore = AccountSessionStore(this)
+        accountAuthenticator = FirebaseAccountAuthenticator(this, accountSessionStore)
+        telemetry = AppTelemetry(this)
+        appScope.launch { accountAuthenticator.restoreSession() }
         if (!BuildConfig.DEBUG) {
             appScope.launch {
                 val session = accountSessionStore.session.first()
@@ -69,7 +78,13 @@ class RoutePlannerApplication : Application() {
             )
         }
         appScope.launch {
-            settingsRepository.settings.collect { latestSettings = it }
+            settingsRepository.settings.collect {
+                latestSettings = it
+                telemetry.applyConsent(
+                    usageAnalyticsEnabled = it.usageAnalyticsEnabled,
+                    crashReportsEnabled = it.crashReportsEnabled,
+                )
+            }
         }
         appScope.launch {
             repository.ensureDefaultTaskTemplates(
